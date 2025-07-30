@@ -4,7 +4,6 @@ import (
 	"time"
 )
 
-// ==================== ENTITIES ====================
 
 // User represents a user in the system
 type User struct {
