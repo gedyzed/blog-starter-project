@@ -102,7 +102,7 @@ type IPasswordService interface {
 }
 
 type ITokenService interface {
-	GenerateToken() (Token, error)
+	GenerateToken() (*Token, error)
 	ValidateToken(string) error
 	RefreshToken(string) (string, error)
 }
