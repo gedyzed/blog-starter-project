@@ -8,8 +8,9 @@ import (
 )
 
 type UserUsecases struct {
-	repo         domain.IUserRepository
-	tokenService infrastructure.ITokenService
+	repo            domain.IUserRepository
+	tokenService    domain.ITokenService
+	passwordService domain.IPasswordService
 }
 
 func (u *UserUsecases) Login(user domain.User) (*domain.Token, error) {
@@ -18,7 +19,11 @@ func (u *UserUsecases) Login(user domain.User) (*domain.Token, error) {
 		return nil, errors.New("User does not exist")
 	}
 
-	if data.Password != user.Password || data.Email != user.Email {
+	if u.passwordService.Verify(user.Password, data.Password) {
+		return nil, errors.New("invalid email or passwrod")
+	}
+
+	if data.Email != user.Email {
 		return nil, errors.New("invalid email or passwrod")
 	}
 

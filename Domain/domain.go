@@ -100,3 +100,9 @@ type IPasswordService interface {
 	Hash(string) string
 	Verify(string, string) bool
 }
+
+type ITokenService interface {
+	GenerateToken() (Token, error)
+	ValidateToken(string) error
+	RefreshToken(string) (string, error)
+}
