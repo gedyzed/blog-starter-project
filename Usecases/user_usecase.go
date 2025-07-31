@@ -33,3 +33,7 @@ func (u *UserUsecases) Login(user domain.User) (string, error) {
 func (u *UserUsecases) Authenticate(token string) error {
 	return u.tokenService.ValidateToken(token)
 }
+
+func (u *UserUsecases) RefreshToken(refreshToken string) (string, error) {
+	return u.tokenService.RefreshToken(refreshToken)
+}
