@@ -1,14 +1,18 @@
 package domain
 
 import (
+	"context"
 	"time"
 )
 
 type IUserRepository interface {
-	Add(user User) error
-	Update(id string, user User) error
-	Delete(id string) error
-	Get(id string) (*User, error)
+
+	Add(ctx context.Context, user *User) error
+	Update(ctx context.Context, id string, user *User) error
+	Delete(ctx context.Context, id string) error
+	Get(ctx context.Context, id string) (*User, error)
+	GetByEmail(ctx context.Context, email string)(*User, error)
+	GetByUsername(ctx context.Context, username string)(*User, error)
 }
 
 // User represents a user in the system
@@ -97,7 +101,7 @@ type AISuggestion struct {
 }
 
 type IPasswordService interface {
-	Hash(string) string
+	Hash(string) (string, error)
 	Verify(string, string) bool
 }
 
