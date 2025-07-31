@@ -12,22 +12,22 @@ type UserUsecases struct {
 	tokenService infrastructure.ITokenService
 }
 
-func (u *UserUsecases) Login(user domain.User) (string, error) {
+func (u *UserUsecases) Login(user domain.User) (*domain.Token, error) {
 	data, err := u.repo.Get(user.Username)
 	if err != nil {
-		return "", errors.New("User does not exist")
+		return nil, errors.New("User does not exist")
 	}
 
 	if data.Password != user.Password || data.Email != user.Email {
-		return "", errors.New("invalid email or passwrod")
+		return nil, errors.New("invalid email or passwrod")
 	}
 
 	token, err := u.tokenService.GenerateToken()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return token, nil
+	return &token, nil
 }
 
 func (u *UserUsecases) Authenticate(token string) error {
