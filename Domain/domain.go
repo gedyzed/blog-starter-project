@@ -5,6 +5,13 @@ import (
 )
 
 
+type IUserRepository {
+	Add(user User) error
+	Update(id string, user User) error
+	Delete(id string) error
+	Get(id string) (*User, error)
+}
+
 // User represents a user in the system
 type User struct {
 	ID        string    `json:"id" bson:"user_id"`
