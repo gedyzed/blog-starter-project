@@ -19,7 +19,7 @@ type User struct {
 	Username  string    `json:"username" bson:"username"`
 	Email     string    `json:"email" bson:"email"`
 	Role      string    `json:"role" bson:"role"`
-	Password  string    `json:"-" bson:"password"` // "-" means don't include in JSON
+	Password  string    `json:"-" bson:"password"` 
 	CreatedAt time.Time `json:"created_at" bson:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" bson:"updated_at"`
 }
