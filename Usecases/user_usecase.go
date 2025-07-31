@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/gedyzed/blog-starter-project/Domain"
-	"github.com/gedyzed/blog-starter-project/Infrastructure"
 )
 
 type UserUsecases struct {
