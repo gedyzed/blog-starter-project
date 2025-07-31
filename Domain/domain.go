@@ -4,8 +4,7 @@ import (
 	"time"
 )
 
-
-type IUserRepository {
+type IUserRepository interface {
 	Add(user User) error
 	Update(id string, user User) error
 	Delete(id string) error
@@ -96,4 +95,3 @@ type AISuggestion struct {
 	Suggestion string    `json:"suggestion" bson:"suggestion"`
 	CreatedAt  time.Time `json:"created_at" bson:"created_at"`
 }
-
