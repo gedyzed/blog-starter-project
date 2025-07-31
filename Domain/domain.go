@@ -95,3 +95,8 @@ type AISuggestion struct {
 	Suggestion string    `json:"suggestion" bson:"suggestion"`
 	CreatedAt  time.Time `json:"created_at" bson:"created_at"`
 }
+
+type IPasswordService interface {
+	Hash(string) string
+	Verify(string, string) bool
+}
