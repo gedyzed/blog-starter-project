@@ -97,8 +97,8 @@ type AISuggestion struct {
 }
 
 type IPasswordService interface {
-	Hash(string) string
-	Verify(string, string) bool
+	Hash(string) (string, error)
+	Verify(string, string) error
 }
 
 type ITokenService interface {
