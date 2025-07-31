@@ -58,6 +58,11 @@ type Comment struct {
 	Created time.Time `json:"created" bson:"created"`
 }
 
+type ITokenRepository interface {
+	GetTokenByUserID(string) (*Token, error)
+	Delete(string) error
+}
+
 // Token represents authentication tokens
 type Token struct {
 	ID           string    `json:"id" bson:"token_id"`
