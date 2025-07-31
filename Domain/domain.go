@@ -2,6 +2,8 @@ package domain
 
 import (
 	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type IUserRepository interface {
@@ -110,4 +112,30 @@ type ITokenService interface {
 	GenerateToken() (*Token, error)
 	ValidateToken(string) error
 	RefreshToken(string) (string, error)
+}
+
+// BlogInput for creating a blog
+type BlogInput struct {
+	Title   string   `json:"title" binding:"required"`
+	Content string   `json:"content" binding:"required"`
+	Tags    []string `json:"tags"`
+}
+
+// BlogUpdateInput for updating a blog
+type BlogUpdateInput struct {
+	UserID  primitive.ObjectID `json:"user_id"`
+	Title   string             `json:"title"`
+	Content string             `json:"content"`
+	Tags    []string           `json:"tags"`
+}
+
+// BlogRepository defines the contract for blog-related operations
+type BlogRepository interface {
+	UpdateBlog(id primitive.ObjectID, userID primitive.ObjectID, updatedBlog BlogUpdateInput) error
+	DeleteBlog(id primitive.ObjectID, userID primitive.ObjectID) error
+}
+
+type BlogUsecase interface {
+	UpdateBlog(blogID primitive.ObjectID, userID primitive.ObjectID, updatedBlog BlogUpdateInput) error
+	DeleteBlog(blogID primitive.ObjectID, userID primitive.ObjectID) error
 }
