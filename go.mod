@@ -1,4 +1,4 @@
-module blog-starter-project
+module github.com/gedyzed/blog-starter-project
 
 go 1.24.4
 
