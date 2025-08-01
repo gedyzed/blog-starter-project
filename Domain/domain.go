@@ -121,3 +121,10 @@ type BlogUpdateInput struct {
 	Content string   `json:"content"`
 	Tags    []string `json:"tags"`
 }
+
+type PaginatedBlogResponse struct {
+    Blogs       []Blog `json:"blogs"`
+    TotalCount  int    `json:"total_count"`
+    TotalPages  int    `json:"total_pages"`
+    CurrentPage int    `json:"current_page"`
+}
