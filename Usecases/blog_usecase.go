@@ -40,7 +40,7 @@ func (uc *blogUsecase) GetBlogByID(ctx context.Context, id string) (*domain.Blog
 	if err != nil {
 		return nil, err
 	}
-	_ = uc.blogRepo.IncrementBlogViews(ctx, id) // Optional: log if error
+	_ = uc.blogRepo.IncrementBlogViews(ctx, id) 
 	return blog, nil
 }
 
