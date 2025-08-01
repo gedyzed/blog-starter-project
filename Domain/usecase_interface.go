@@ -1,6 +1,11 @@
 package domain
 
-type IBlogUsecase interface {
-	UpdateBlog(blogID string, userID string, updatedBlog BlogUpdateInput) error
-	DeleteBlog(blogID string, userID string) error
+import "context"
+
+type BlogUsecase interface {
+	GetAllBlogs(ctx context.Context, page int, limit int, sort string) (*PaginatedBlogResponse, error)
+	GetBlogByID(ctx context.Context, id string) (*Blog, error)
+	CreateBlog(ctx context.Context, blog Blog) (*Blog, error)
+	UpdateBlog(ctx context.Context, id string, userID string, updatedBlog BlogUpdateInput) error
+	DeleteBlog(ctx context.Context, id string, userID string) error
 }

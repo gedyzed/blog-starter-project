@@ -17,7 +17,7 @@ type UserUsecases struct {
 func (u *UserUsecases) Login(user domain.User) (*domain.Token, error) {
 	data, err := u.userRepo.Get(user.Username)
 	if err != nil {
-		return nil, errors.New("User does not exist")
+		return nil, errors.New("user does not exist")
 	}
 
 	if err = u.passwordService.Verify(user.Password, data.Password); err != nil {
