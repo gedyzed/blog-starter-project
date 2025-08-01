@@ -41,14 +41,14 @@ type Profile struct {
 
 // Blog represents a blog post
 type Blog struct {
-	ID        string    `json:"id" bson:"blog_id"`
-	UserID    string    `json:"user_id" bson:"user_id"`
-	Title     string    `json:"title" bson:"title"`
-	Content   string    `json:"content" bson:"content"`
-	Created   time.Time `json:"created" bson:"created"`
-	Updated   time.Time `json:"updated" bson:"updated"`
-	ViewCount int       `json:"view_count" bson:"view_count"`
-	Tags      []string  `json:"tags" bson:"tags"`
+	ID        primitive.ObjectID `json:"id" bson:"_id,omitempty"` // uses MongoDB's native ObjectID
+	UserID    primitive.ObjectID `json:"user_id" bson:"user_id"`
+	Title     string             `json:"title" bson:"title"`
+	Content   string             `json:"content" bson:"content"`
+	Created   time.Time          `json:"created" bson:"created"`
+	Updated   time.Time          `json:"updated" bson:"updated"`
+	ViewCount int                `json:"view_count" bson:"view_count"`
+	Tags      []string           `json:"tags" bson:"tags"`
 }
 
 // Comment represents a comment on a blog post
@@ -114,28 +114,10 @@ type ITokenService interface {
 	RefreshToken(string) (string, error)
 }
 
-// BlogInput for creating a blog
-type BlogInput struct {
-	Title   string   `json:"title" binding:"required"`
-	Content string   `json:"content" binding:"required"`
-	Tags    []string `json:"tags"`
-}
-
 // BlogUpdateInput for updating a blog
 type BlogUpdateInput struct {
-	UserID  primitive.ObjectID `json:"user_id"`
-	Title   string             `json:"title"`
-	Content string             `json:"content"`
-	Tags    []string           `json:"tags"`
-}
-
-// BlogRepository defines the contract for blog-related operations
-type BlogRepository interface {
-	UpdateBlog(id primitive.ObjectID, userID primitive.ObjectID, updatedBlog BlogUpdateInput) error
-	DeleteBlog(id primitive.ObjectID, userID primitive.ObjectID) error
-}
-
-type BlogUsecase interface {
-	UpdateBlog(blogID primitive.ObjectID, userID primitive.ObjectID, updatedBlog BlogUpdateInput) error
-	DeleteBlog(blogID primitive.ObjectID, userID primitive.ObjectID) error
+	UserID  string   `json:"user_id"`
+	Title   string   `json:"title"`
+	Content string   `json:"content"`
+	Tags    []string `json:"tags"`
 }

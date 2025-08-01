@@ -5,39 +5,39 @@ import (
 
 	domain "github.com/gedyzed/blog-starter-project/Domain"
 	"github.com/gin-gonic/gin"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type BlogHandler struct {
-	blogUsecase domain.BlogUsecase
+	blogUsecase domain.IBlogUsecase
 }
 
-func NewBlogHandler(blogUsecase domain.BlogUsecase) *BlogHandler {
+func NewBlogHandler(blogUsecase domain.IBlogUsecase) *BlogHandler {
 	return &BlogHandler{blogUsecase: blogUsecase}
 
 }
 
 func (h *BlogHandler) UpdateBlog(c *gin.Context) {
-	blogIDparam := c.Param("id")
-	blogID, err := primitive.ObjectIDFromHex(blogIDparam)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid blog id"})
-		return
-	}
+	id := c.Param("id")
 
-	var input domain.BlogUpdateInput
-	err = c.ShouldBindJSON(&input)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	userIDVal, exists := c.Get("userID")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
-	userID := userIDVal.(primitive.ObjectID)
-	err = h.blogUsecase.UpdateBlog(blogID, userID, input)
+	userIDStr, ok := userID.(string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "user ID is not a string"})
+		return
+	}
+
+	var input domain.BlogUpdateInput
+	err := c.ShouldBindJSON(&input)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	err = h.blogUsecase.UpdateBlog(id, userIDStr, input)
 	if err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		return
@@ -48,12 +48,7 @@ func (h *BlogHandler) UpdateBlog(c *gin.Context) {
 }
 
 func (h *BlogHandler) DeleteBlog(c *gin.Context) {
-	blogIDparam := c.Param("id")
-	blogID, err := primitive.ObjectIDFromHex(blogIDparam)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid blog id"})
-		return
-	}
+	id := c.Param("id")
 
 	userIDVal, exists := c.Get("userID")
 	if !exists {
@@ -61,8 +56,12 @@ func (h *BlogHandler) DeleteBlog(c *gin.Context) {
 		return
 	}
 
-	userID := userIDVal.(primitive.ObjectID)
-	err = h.blogUsecase.DeleteBlog(blogID, userID)
+	userID, ok := userIDVal.(string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "user ID is not a string"})
+		return
+	}
+	err := h.blogUsecase.DeleteBlog(id, userID)
 	if err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		return

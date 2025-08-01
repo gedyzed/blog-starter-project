@@ -16,13 +16,23 @@ type blogRepository struct {
 	collection *mongo.Collection
 }
 
-func NewBlogRepository(coll *mongo.Collection) domain.BlogRepository {
+func NewBlogRepository(coll *mongo.Collection) domain.IBlogRepository {
 	return &blogRepository{collection: coll}
 
 }
 
-func (r *blogRepository) DeleteBlog(id primitive.ObjectID, userID primitive.ObjectID) error {
-	filter := bson.M{"_id": id, "user_id": userID}
+func (r *blogRepository) DeleteBlog(id string, userID string) error {
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+
+	userpreID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		return err
+	}
+
+	filter := bson.M{"_id": objID, "user_id": userpreID}
 	ctx := context.Background()
 	res, err := r.collection.DeleteOne(ctx, filter)
 
@@ -36,9 +46,19 @@ func (r *blogRepository) DeleteBlog(id primitive.ObjectID, userID primitive.Obje
 	return nil
 }
 
-func (r *blogRepository) UpdateBlog(id primitive.ObjectID, userID primitive.ObjectID, updatedBlog domain.BlogUpdateInput) error {
+func (r *blogRepository) UpdateBlog(id string, userID string, updatedBlog domain.BlogUpdateInput) error {
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+
+	userpreID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		return err
+	}
+
 	ctx := context.Background()
-	filter := bson.M{"_id": id, "user_id": userID}
+	filter := bson.M{"_id": objID, "user_id": userpreID}
 	update := bson.M{
 		"title":   updatedBlog.Title,
 		"content": updatedBlog.Content,
