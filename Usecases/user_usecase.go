@@ -54,7 +54,7 @@ func (u *UserUsecases) Login(ctx context.Context, user domain.User) (*domain.Tok
 	}
 
 	if err = u.passwordService.Verify(user.Password, data.Password); err != nil {
-		return nil, errors.New("invalid email or passwrod")
+		return nil, ErrInvalidCredential
 	}
 
 	if data.Email != user.Email {
@@ -90,14 +90,18 @@ func (u *UserUsecases) Authenticate(ctx context.Context, token string) (*domain.
 func (u *UserUsecases) RefreshToken(ctx context.Context, id string, refreshToken string) (*domain.Token, error) {
 	token, err := u.tokenRepo.FindByUserID(ctx, id)
 	if err != nil {
-		return nil, nil
+		if errors.Is(err, repository.ErrTokenNotFound) {
+			return nil, ErrInvalidCredential
+		}
+		return nil, err
 	}
 
 	if token.RefreshExpiry.Unix() > time.Now().Unix() {
 		err = u.tokenRepo.DeleteByUserID(ctx, id)
 		if err != nil {
-			return nil, nil
+			return nil, err
 		}
+
 		return nil, ErrExpiredRefreshToken
 	}
 
