@@ -1,16 +1,20 @@
 package domain
 
 import (
+	"context"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type IUserRepository interface {
-	Add(user User) error
-	Update(id string, user User) error
-	Delete(id string) error
-	Get(id string) (*User, error)
+
+	Add(ctx context.Context, user *User) error
+	Update(ctx context.Context, id string, user *User) error
+	Delete(ctx context.Context, id string) error
+	Get(ctx context.Context, id string) (*User, error)
+	GetByEmail(ctx context.Context, email string)(*User, error)
+	GetByUsername(ctx context.Context, username string)(*User, error)
 }
 
 // User represents a user in the system
@@ -21,7 +25,7 @@ type User struct {
 	Username  string    `json:"username" bson:"username"`
 	Email     string    `json:"email" bson:"email"`
 	Role      string    `json:"role" bson:"role"`
-	Password  string    `json:"-" bson:"password"` // "-" means don't include in JSON
+	Password  string    `json:"-" bson:"password"` 
 	CreatedAt time.Time `json:"created_at" bson:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" bson:"updated_at"`
 }
@@ -105,7 +109,11 @@ type AISuggestion struct {
 
 type IPasswordService interface {
 	Hash(string) (string, error)
+<<<<<<< HEAD
 	Verify(string, string) error
+=======
+	Verify(string, string) bool
+>>>>>>> 5326082c22b972240493a44a880a1835f7d591f8
 }
 
 type ITokenService interface {
