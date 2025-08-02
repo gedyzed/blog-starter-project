@@ -8,13 +8,12 @@ import (
 )
 
 type IUserRepository interface {
-
 	Add(ctx context.Context, user *User) error
 	Update(ctx context.Context, id string, user *User) error
 	Delete(ctx context.Context, id string) error
 	Get(ctx context.Context, id string) (*User, error)
-	GetByEmail(ctx context.Context, email string)(*User, error)
-	GetByUsername(ctx context.Context, username string)(*User, error)
+	GetByEmail(ctx context.Context, email string) (*User, error)
+	GetByUsername(ctx context.Context, username string) (*User, error)
 }
 
 // User represents a user in the system
@@ -25,7 +24,7 @@ type User struct {
 	Username  string    `json:"username" bson:"username"`
 	Email     string    `json:"email" bson:"email"`
 	Role      string    `json:"role" bson:"role"`
-	Password  string    `json:"-" bson:"password"` 
+	Password  string    `json:"-" bson:"password"`
 	CreatedAt time.Time `json:"created_at" bson:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" bson:"updated_at"`
 }
@@ -65,18 +64,20 @@ type Comment struct {
 }
 
 type ITokenRepository interface {
-	GetTokenByUserID(string) (*Token, error)
-	Delete(string) error
+	Save(context.Context, Token) error
+	FindByUserID(context.Context, string) (*Token, error)
+	DeleteByUserID(context.Context, string) error
 }
 
 // Token represents authentication tokens
 type Token struct {
-	ID           string    `json:"id" bson:"token_id"`
-	UserID       string    `json:"user_id" bson:"user_id"`
-	AccessToken  string    `json:"access_token" bson:"access_token"`
-	RefreshToken string    `json:"refresh_token" bson:"refresh_token"`
-	ExpiresAt    time.Time `json:"expires_at" bson:"expires_at"`
-	CreatedAt    time.Time `json:"created_at" bson:"created_at"`
+	UserID        string    `json:"user_id" bson:"user_id"`
+	AccessToken   string    `json:"access_token" bson:"access_token"`
+	RefreshToken  string    `json:"refresh_token" bson:"refresh_token"`
+	AccessExpiry  time.Time `json:"access_expiry" bson:"access_expiry"`
+	RefreshExpiry time.Time `json:"refresh_expiry" bson:"refresh_expiry"`
+	CreatedAt     time.Time `json:"created_at" bson:"created_at"`
+	UpdatedAt     time.Time `json:"expires_at" bson:"expires_at"`
 }
 
 // Like represents a like on a blog post
@@ -109,17 +110,13 @@ type AISuggestion struct {
 
 type IPasswordService interface {
 	Hash(string) (string, error)
-<<<<<<< HEAD
 	Verify(string, string) error
-=======
-	Verify(string, string) bool
->>>>>>> 5326082c22b972240493a44a880a1835f7d591f8
 }
 
 type ITokenService interface {
-	GenerateToken() (*Token, error)
-	ValidateToken(string) error
-	RefreshToken(string) (string, error)
+	GenerateTokens(ctx context.Context, userID string) (*Token, error)
+	VerifyAccessToken(string) (string, error)
+	RefreshTokens(ctx context.Context, refreshToken string) (*Token, error)
 }
 
 // BlogUpdateInput for updating a blog
@@ -131,8 +128,8 @@ type BlogUpdateInput struct {
 }
 
 type PaginatedBlogResponse struct {
-    Blogs       []Blog `json:"blogs"`
-    TotalCount  int    `json:"total_count"`
-    TotalPages  int    `json:"total_pages"`
-    CurrentPage int    `json:"current_page"`
+	Blogs       []Blog `json:"blogs"`
+	TotalCount  int    `json:"total_count"`
+	TotalPages  int    `json:"total_pages"`
+	CurrentPage int    `json:"current_page"`
 }
