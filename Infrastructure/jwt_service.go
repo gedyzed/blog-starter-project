@@ -1,63 +1,113 @@
 package infrastructure
 
 import (
-	"fmt"
+	"context"
+	"errors"
 	"time"
 
-	domain "github.com/gedyzed/blog-starter-project/Domain"
+	"github.com/gedyzed/blog-starter-project/Domain"
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type JWTService struct {
-	key string
+var (
+	ErrInvalidToken        = errors.New("invalid token")
+	ErrInvalidRefreshToken = errors.New("invalid refresh token")
+)
+
+type JWTTokenService struct {
+	repo       domain.ITokenRepository
+	accessKey  []byte
+	refreshKey []byte
+	accessTTL  time.Duration
+	refreshTTL time.Duration
 }
 
-func (jwts *JWTService) GenerateToken() (*domain.Token, error) {
-	t1 := jwt.New(jwt.SigningMethodES256)
-	t2 := jwt.New(jwt.SigningMethodES256)
-
-	accessToken, err := t1.SignedString([]byte(jwts.key))
-	if err != nil {
-		return nil, err
+func NewJWTTokenService(repo domain.ITokenRepository, accessKey, refreshKey string, accessTTL, refreshTTL time.Duration) *JWTTokenService {
+	return &JWTTokenService{
+		repo,
+		[]byte(accessKey),
+		[]byte(refreshKey),
+		accessTTL,
+		refreshTTL,
 	}
-
-	refreshToken, err := t2.SignedString([]byte(jwts.key))
-	if err != nil {
-		return nil, err
-	}
-
-	token := domain.Token{
-		RefreshToken: refreshToken,
-		AccessToken:  accessToken,
-		CreatedAt:    time.Now(),
-		ExpiresAt:    time.Now().Add(30 * (24 * time.Hour)),
-	}
-
-	return &token, nil
 }
 
-func (jwts *JWTService) ValidateToken(tokenString string) error {
-	_, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return []byte(jwts.key), nil
+func (s *JWTTokenService) signJWT(userID string, key []byte, ttl time.Duration) (string, error) {
+	claims := jwt.RegisteredClaims{
+		Subject:   userID,
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(ttl)),
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(key)
+}
+
+func (s *JWTTokenService) verifyJWT(tokenString string, key []byte) (string, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &jwt.RegisteredClaims{}, func(token *jwt.Token) (any, error) {
+		return key, nil
 	})
 
 	if err != nil {
-		return err
+		return "", ErrInvalidToken
 	}
 
-	return nil
+	if claims, ok := token.Claims.(*jwt.RegisteredClaims); ok && token.Valid {
+		return claims.Subject, nil
+	}
+
+	return "", ErrInvalidToken
 }
 
-func (jwts *JWTService) RefreshToken(token string) (string, error) {
-	t1 := jwt.New(jwt.SigningMethodES256)
-
-	accessToken, err := t1.SignedString([]byte(jwts.key))
+func (s *JWTTokenService) GenerateTokens(ctx context.Context, userID string) (*domain.Token, error) {
+	accessToken, err := s.signJWT(userID, s.accessKey, s.accessTTL)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return accessToken, nil
+	refreshToken, err := s.signJWT(userID, s.refreshKey, s.refreshTTL)
+	if err != nil {
+		return nil, err
+	}
+
+	tokens := domain.Token{
+		UserID:        userID,
+		AccessToken:   accessToken,
+		RefreshToken:  refreshToken,
+		AccessExpiry:  time.Now().Add(s.accessTTL),
+		RefreshExpiry: time.Now().Add(s.refreshTTL),
+	}
+
+	if err := s.repo.Save(ctx, tokens); err != nil {
+		return nil, err
+	}
+
+	return &tokens, nil
+}
+
+func (s *JWTTokenService) RefreshTokens(ctx context.Context, refreshToken string) (*domain.Token, error) {
+	userID, err := s.verifyJWT(refreshToken, s.refreshKey)
+	if err != nil {
+		return nil, ErrInvalidRefreshToken
+	}
+
+	tokens, err := s.repo.FindByUserID(ctx, userID)
+	if err != nil {
+		return nil, ErrInvalidRefreshToken
+	}
+
+	if tokens.RefreshToken != refreshToken {
+		return nil, ErrInvalidRefreshToken
+	}
+
+	if tokens.RefreshExpiry.Before(time.Now()) {
+		_ = s.repo.DeleteByUserID(ctx, userID)
+		return nil, ErrInvalidRefreshToken
+	}
+
+	return s.GenerateTokens(ctx, userID)
+}
+
+func (s *JWTTokenService) VerifyAccessToken(tokenString string) (string, error) {
+	return s.verifyJWT(tokenString, s.accessKey)
 }
