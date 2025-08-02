@@ -10,10 +10,10 @@ import (
 )
 
 type UserController struct {
-	userUsecase usecases.UserUsecases
+	userUsecase *usecases.UserUsecases
 }
 
-func NewUserController(uc usecases.UserUsecases) *UserController {
+func NewUserController(uc *usecases.UserUsecases) *UserController {
 	return &UserController{userUsecase: uc}
 }
 
@@ -21,7 +21,7 @@ func (uc *UserController) Login(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	// accepting user input
-	var user *domain.User
+	var user domain.User
 	if err := c.ShouldBindJSON(&user); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid input format"})
 		c.Abort()
@@ -35,13 +35,11 @@ func (uc *UserController) Login(c *gin.Context) {
 		return
 	}
 
-	token, err := uc.userUsecase.Login(ctx, *user)
+	token, err := uc.userUsecase.Login(ctx, user)
 	if err != nil {
 		switch err {
-		case usecases.ErrInvalidInput:
+		case usecases.ErrInvalidCredential:
 			c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-		case usecases.ErrNotFound:
-			c.IndentedJSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		default:
 			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		}
