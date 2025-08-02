@@ -1,19 +1,18 @@
 package controllers
 
 import (
-<<<<<<< HEAD
 	"net/http"
 	"strconv"
 
+	"github.com/gedyzed/blog-starter-project/Domain"
 	"github.com/gin-gonic/gin"
-	domain "github.com/gedyzed/blog-starter-project/Domain"
 )
 
 type BlogHandler struct {
-	blogUsecase domain.BlogUsecase 
+	blogUsecase domain.BlogUsecase
 }
 
-func NewBlogHandler(blogUsecase domain.BlogUsecase) *BlogHandler { 
+func NewBlogHandler(blogUsecase domain.BlogUsecase) *BlogHandler {
 	return &BlogHandler{blogUsecase: blogUsecase}
 }
 
@@ -62,7 +61,7 @@ func (h *BlogHandler) DeleteBlog(c *gin.Context) {
 		return
 	}
 
-	err := h.blogUsecase.DeleteBlog(c.Request.Context(), id, userID) 
+	err := h.blogUsecase.DeleteBlog(c.Request.Context(), id, userID)
 	if err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		return
@@ -103,7 +102,7 @@ func (h *BlogHandler) GetBlogById(c *gin.Context) {
 	ctx := c.Request.Context()
 	blogID := c.Param("id")
 
-	blog, err := h.blogUsecase.GetBlogByID(ctx, blogID) 
+	blog, err := h.blogUsecase.GetBlogByID(ctx, blogID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -121,7 +120,7 @@ func (h *BlogHandler) CreateBlog(c *gin.Context) {
 		return
 	}
 
-	createdBlog, err := h.blogUsecase.CreateBlog(ctx, newBlog) 
+	createdBlog, err := h.blogUsecase.CreateBlog(ctx, newBlog)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -129,55 +128,3 @@ func (h *BlogHandler) CreateBlog(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, createdBlog)
 }
-=======
-	usecases "github.com/gedyzed/blog-starter-project/Usecases"
-	domain "github.com/gedyzed/blog-starter-project/Domain" 
-	"github.com/gin-gonic/gin"
-)
-
-
-type UserController struct {
-	userUsecase usecases.UserUsecases
-}
-
-func NewUserController(uc usecases.UserUsecases) *UserController {
-	return &UserController{userUsecase: uc}
-}
-
-func (uc *UserController) RegisterUser (c *gin.Context){
-
-	ctx := c.Request.Context()
-
-	// accepting user input
-	var user *domain.User
-	if err := c.ShouldBindJSON(&user); err != nil {
-		c.IndentedJSON(400, gin.H{"error": "invalid input format"})
-		c.Abort()
-		return
-	}
-
-	// checking for required fields
-	if user.Email != "" || user.Username != "" || user.Password  != "" || user.Firstname != "" {
-		c.IndentedJSON(400, gin.H{"error": "fill all required fields: email, username, password, firstname"})
-		c.Abort()
-		return
-	}
-
-	err := uc.userUsecase.Register(ctx, user)
-
-	if err != nil {
-		switch err.Error() {
-		case "username or email already exists":
-			c.IndentedJSON(409, gin.H{"error": err.Error()})
-		default:
-			c.IndentedJSON(500, gin.H{"error": err.Error()})
-		}
-
-		c.Abort()
-		return
-	}
-
-	c.IndentedJSON(200, gin.H{"message": "user created successfully"})
-}
-
->>>>>>> 5326082c22b972240493a44a880a1835f7d591f8
