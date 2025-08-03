@@ -3,9 +3,8 @@ package repository
 import (
 	"context"
 	"errors"
-	"time"
 
-	"github.com/gedyzed/blog-starter-project/Domain"
+	domain "github.com/gedyzed/blog-starter-project/Domain"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -20,23 +19,26 @@ type mongoUserRepo struct {
 }
 
 func NewMongoUserRepo(coll *mongo.Collection) domain.IUserRepository {
-	return &mongoUserRepo{
-		coll,
-	}
+	return &mongoUserRepo{coll: coll}
 }
 
 func (r *mongoUserRepo) Add(ctx context.Context, user *domain.User) error {
-	_, err := r.coll.InsertOne(ctx, user)
+
+	cursor, err := r.coll.Find(ctx, bson.M{})
 	if err != nil {
-		if we, ok := err.(mongo.WriteException); ok {
-			for _, e := range we.WriteErrors {
-				if e.Code == 1100 {
-					return ErrUserAlreadyExist
-				}
+		return err
+	}
+	defer cursor.Close(ctx)
 
-			}
-		}
+	if !cursor.Next(ctx) {
+		user.Role = "admin"
+	} else {
+		user.Role = "regular"
+	}
 
+	// Insert the user
+	_, err = r.coll.InsertOne(ctx, user)
+	if err != nil {
 		return err
 	}
 
@@ -44,87 +46,59 @@ func (r *mongoUserRepo) Add(ctx context.Context, user *domain.User) error {
 }
 
 func (r *mongoUserRepo) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
-	var user domain.User
 
+	// Check for duplicate username
 	filter := bson.M{"email": email}
-	err := r.coll.FindOne(ctx, filter).Decode(&user)
+	result := r.coll.FindOne(ctx, filter)
 
+	if result.Err() != nil && errors.Is(result.Err(), mongo.ErrNoDocuments) {
+		return nil, errors.New("user not found")
+	}
+
+	if result.Err() != nil {
+		return nil, errors.New("error while decoding data")
+	}
+
+	var user domain.User
+	err := result.Decode(&user)
 	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, ErrUserNotFound
-		}
-
-		return nil, err
+		return nil, errors.New("error while decoding data")
 	}
 
 	return &user, nil
 }
 
 func (r *mongoUserRepo) GetByUsername(ctx context.Context, username string) (*domain.User, error) {
-	var user domain.User
+
+	// Check for duplicate username
 	filter := bson.M{"username": username}
-	err := r.coll.FindOne(ctx, filter).Decode(&user)
+	result := r.coll.FindOne(ctx, filter)
 
-	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, ErrUserNotFound
-		}
-
-		return nil, err
+	if result.Err() != nil && errors.Is(result.Err(), mongo.ErrNoDocuments) {
+		return nil, errors.New("user not found")
 	}
 
-	return &user, nil
-}
-
-func (r *mongoUserRepo) Update(ctx context.Context, id string, user *domain.User) error {
-	filter := bson.D{{Key: "_id", Value: id}}
-	update := bson.D{{Key: "email", Value: user.Email}, {Key: "role", Value: user.Role}, {Key: "updated_at", Value: time.Now()}, {Key: "password", Value: user.Password}}
-
-	result, err := r.coll.UpdateOne(ctx, filter, update)
-	if err != nil {
-		if we, ok := err.(mongo.WriteException); ok {
-			for _, e := range we.WriteErrors {
-				if e.Code == 1100 {
-					return ErrUserAlreadyExist
-				}
-
-			}
-		}
-
-		return err
+	if result.Err() != nil {
+		return nil, errors.New("error while decoding data")
 	}
 
-	if result.MatchedCount == 0 {
-		return ErrUserNotFound
-	}
-
-	return nil
-}
-
-func (r *mongoUserRepo) Delete(ctx context.Context, id string) error {
-	result, err := r.coll.DeleteOne(ctx, bson.D{{Key: "_id", Value: id}})
-	if err != nil {
-		return err
-	}
-
-	if result.DeletedCount == 0 {
-		return ErrUserNotFound
-	}
-
-	return nil
-}
-
-func (r *mongoUserRepo) Get(ctx context.Context, id string) (*domain.User, error) {
 	var user domain.User
-
-	err := r.coll.FindOne(ctx, bson.D{{Key: "_id", Value: id}}).Decode(&user)
+	err := result.Decode(&user)
 	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, ErrUserNotFound
-		}
-
-		return nil, err
+		return nil, errors.New("error while decoding data")
 	}
 
 	return &user, nil
 }
+
+func (r *mongoUserRepo) Update(ctx context.Context, id string, user *domain.User) error{
+	return nil
+}
+func (r *mongoUserRepo) Delete(ctx context.Context, id string)error {
+	return nil
+}
+func (r *mongoUserRepo) Get(ctx context.Context, id string) (*domain.User, error){
+
+	return nil, nil
+}
+

@@ -58,9 +58,12 @@ func main() {
 	userRepo := repository.NewMongoUserRepo(userCollection)
 	blogRepo := repository.NewBlogRepository(blogCollection)
 
+
+
 	// Setup services
 	passService := infrastructure.NewPasswordService()
-	tokenService := infrastructure.NewJWTTokenService(
+    tokenService := infrastructure.NewTokenServices()
+	jwtService := infrastructure.NewJWTTokenService(
 		tokenRepo,
 		conf.Auth.AccessTokenKey,
 		conf.Auth.RefreshTokenKey,
@@ -68,18 +71,24 @@ func main() {
 		60*(24*time.Hour), // 2 month
 	)
 
+    // Setup token Usecase
+	tokenUsecase := usecases.NewTokenUsecase(tokenRepo, tokenService, jwtService)
+
 	// Setup usecases
-	userUsecase := usecases.NewUserUsecase(userRepo, tokenService, passService)
+	userUsecase := usecases.NewUserUsecase(userRepo, tokenUsecase, passService)
 	blogUsecase := usecases.NewBlogUsecase(blogRepo)
 
 	// Setup handlers
 	userHandler := controllers.NewUserController(userUsecase)
 	blogHandler := controllers.NewBlogHandler(blogUsecase)
+    tokenHandler := controllers.NewTokenController(tokenUsecase)
+
 
 	r := gin.Default()
 
 	routers.RegisterBlogRoutes(r, blogHandler)
 	routers.RegisterUserRoutes(r, userHandler)
+    routers.RegisterTokenRoutes(r, tokenHandler)
 
-	r.Run(":" + string(conf.Port))
+	r.Run(":" + conf.Port)
 }

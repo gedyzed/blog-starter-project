@@ -15,14 +15,14 @@ var (
 )
 
 type JWTTokenService struct {
-	repo       domain.ITokenRepository
+	repo       domain.ITokenRepo
 	accessKey  []byte
 	refreshKey []byte
 	accessTTL  time.Duration
 	refreshTTL time.Duration
 }
 
-func NewJWTTokenService(repo domain.ITokenRepository, accessKey, refreshKey string, accessTTL, refreshTTL time.Duration) *JWTTokenService {
+func NewJWTTokenService(repo domain.ITokenRepo, accessKey, refreshKey string, accessTTL, refreshTTL time.Duration) *JWTTokenService {
 	return &JWTTokenService{
 		repo,
 		[]byte(accessKey),

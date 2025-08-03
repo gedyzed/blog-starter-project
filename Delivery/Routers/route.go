@@ -4,7 +4,9 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/gedyzed/blog-starter-project/Delivery/Controllers"
+
 )
+
 
 func RegisterBlogRoutes(r *gin.Engine, handler *controllers.BlogHandler) {
 	blog := r.Group("/blogs")
@@ -26,3 +28,20 @@ func RegisterUserRoutes(r *gin.Engine, handler *controllers.UserController) {
 		users.POST("/login", handler.Login)
 	}
 }
+
+func RegisterTokenRoutes(r *gin.Engine, handler *controllers.TokenController){
+
+	tokens := r.Group("/tokens/")
+
+	{
+		tokens.POST("/send-vcode", handler.SendVerificationEmail) // send verification email
+	}
+}
+
+
+
+
+
+
+
+

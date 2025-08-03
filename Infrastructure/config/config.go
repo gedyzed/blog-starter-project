@@ -15,7 +15,7 @@ import (
 )
 
 type Config struct {
-	Port  int         `mapstructure:"port" validate:"required,min=1,max=65535"`
+	Port  string         `mapstructure:"port" validate:"required,min=1,max=65535"`
 	Mongo MongoConfig `mapstructure:"mongo" validate:"required"`
 	Auth  AuthConfig  `mapstructure:"auth" validate:"required"`
 }
@@ -51,7 +51,7 @@ func LoadConfig() (*Config, error) {
 	viper.BindEnv("auth.access_token_key", "AUTH_ACCESS_TOKEN_KEY")
 	viper.BindEnv("auth.refresh_token_key", "AUTH_REFRESH_TOKEN_KEY")
 
-	viper.SetDefault("port", 8080)
+	viper.SetDefault("port", "8080")
 
 	var cfg Config
 	if err := viper.Unmarshal(&cfg); err != nil {

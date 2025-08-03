@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"time"
+	
 
-	"github.com/gedyzed/blog-starter-project/Domain"
-	"github.com/gedyzed/blog-starter-project/Repository"
+	domain "github.com/gedyzed/blog-starter-project/Domain"
+	repository "github.com/gedyzed/blog-starter-project/Repository"
 )
+
 
 var (
 	// Access token errors
@@ -26,17 +28,17 @@ var (
 	ErrUnauthorized = errors.New("unauthorized")
 )
 
+
 type UserUsecases struct {
-	tokenRepo       domain.ITokenRepository
-	userRepo        domain.IUserRepository
-	tokenService    domain.ITokenService
+	userRepo  			domain.IUserRepository
+	tokenUsecase    ITokenUsecase
 	passwordService domain.IPasswordService
 }
 
-func NewUserUsecase(repo domain.IUserRepository, ts domain.ITokenService, ps domain.IPasswordService) *UserUsecases {
+func NewUserUsecase(userRepo domain.IUserRepository, tu ITokenUsecase, ps domain.IPasswordService) *UserUsecases {
 	return &UserUsecases{
-		userRepo:        repo,
-		tokenService:    ts,
+		userRepo:        userRepo,
+		tokenUsecase:    tu,
 		passwordService: ps,
 	}
 }
@@ -52,7 +54,7 @@ func (u *UserUsecases) Login(ctx context.Context, user domain.User) (*domain.Tok
 			return nil, ErrUnexpected
 		}
 	}
-
+	
 	if err = u.passwordService.Verify(user.Password, data.Password); err != nil {
 		return nil, ErrInvalidCredential
 	}
@@ -61,7 +63,7 @@ func (u *UserUsecases) Login(ctx context.Context, user domain.User) (*domain.Tok
 		return nil, ErrInvalidCredential
 	}
 
-	token, err := u.tokenService.GenerateTokens(ctx, data.ID)
+	token, err := u.tokenUsecase.GenerateTokens(ctx, data.ID)
 	if err != nil {
 		return nil, ErrUnexpected
 	}
@@ -70,7 +72,7 @@ func (u *UserUsecases) Login(ctx context.Context, user domain.User) (*domain.Tok
 }
 
 func (u *UserUsecases) Authenticate(ctx context.Context, token string) (*domain.User, error) {
-	userID, err := u.tokenService.VerifyAccessToken(token)
+	userID, err := u.tokenUsecase.VerifyAccessToken(token)
 	if err != nil {
 		return nil, ErrUnauthorized
 	}
@@ -88,7 +90,8 @@ func (u *UserUsecases) Authenticate(ctx context.Context, token string) (*domain.
 }
 
 func (u *UserUsecases) RefreshToken(ctx context.Context, id string, refreshToken string) (*domain.Token, error) {
-	token, err := u.tokenRepo.FindByUserID(ctx, id)
+
+	token, err := u.tokenUsecase.FindByUserID(ctx, id)
 	if err != nil {
 		if errors.Is(err, repository.ErrTokenNotFound) {
 			return nil, ErrInvalidCredential
@@ -97,7 +100,7 @@ func (u *UserUsecases) RefreshToken(ctx context.Context, id string, refreshToken
 	}
 
 	if token.RefreshExpiry.Unix() > time.Now().Unix() {
-		err = u.tokenRepo.DeleteByUserID(ctx, id)
+		err = u.tokenUsecase.DeleteByUserID(ctx, id)
 		if err != nil {
 			return nil, err
 		}
@@ -105,27 +108,30 @@ func (u *UserUsecases) RefreshToken(ctx context.Context, id string, refreshToken
 		return nil, ErrExpiredRefreshToken
 	}
 
-	return u.tokenService.RefreshTokens(ctx, refreshToken)
+	return u.tokenUsecase.RefreshTokens(ctx, refreshToken)
 }
+
 
 func (u *UserUsecases) Register(ctx context.Context, user *domain.User) error {
 
 	// check if username exists
 	existing, err := u.userRepo.GetByUsername(ctx, user.Username)
-	if err != nil {
-		err = checkAndReturnError(existing, err, "username already exists")
-		if err != nil {
-			return err
-		}
+	if err != nil && err.Error() == "error while decoding data"{
+		return errors.New("internal server error")
+	}
+
+	if existing != nil {
+		return errors.New("username already exists")
 	}
 
 	// check if email exists
 	existing, err = u.userRepo.GetByEmail(ctx, user.Email)
-	if err != nil {
-		err = checkAndReturnError(existing, err, "email already exists")
-		if err != nil {
-			return err
-		}
+		if err != nil && err.Error() == "error while decoding data"{
+		return errors.New("internal server error")
+	}
+
+	if existing != nil {
+		return errors.New("email already exists")
 	}
 
 	// hash the user password
@@ -134,23 +140,17 @@ func (u *UserUsecases) Register(ctx context.Context, user *domain.User) error {
 		return errors.New("internal server error")
 	}
 
+	// Add user to database 
 	return u.userRepo.Add(ctx, user)
 }
 
-func checkAndReturnError(existing *domain.User, err error, errorMessage string) error {
-
-	if err != nil {
-		if err.Error() == "error while decoding data" {
-			return errors.New("internal server error")
-		} else if err.Error() == "internal server error" {
-			return errors.New("internal server error")
-		}
-	}
-
-	if existing != nil {
-		return errors.New(errorMessage)
-	}
-
-	return nil
-
+func (u *UserUsecases) VerifyCode(ctx context.Context, userID string, vcode string) error {
+	return u.tokenUsecase.VerifyCode(ctx, userID, vcode)
 }
+
+func (u *UserUsecases) DeleteVCode(ctx context.Context, userID string) error {
+	return u.tokenUsecase.DeleteVCode(ctx, userID)
+}
+
+
+ 

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/gedyzed/blog-starter-project/Domain"
+	domain "github.com/gedyzed/blog-starter-project/Domain"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -15,17 +15,82 @@ var (
 	ErrTokenNotFound = errors.New("token not found")
 )
 
-type MongoTokenRepository struct {
-	collection *mongo.Collection
+type mongoTokenRepo struct {
+	coll *mongo.Collection
 }
 
-func NewMongoTokenRepository(coll *mongo.Collection) *MongoTokenRepository {
-	return &MongoTokenRepository{
-		collection: coll,
+func NewMongoTokenRepository(coll *mongo.Collection) domain.ITokenRepo {
+	return &mongoTokenRepo{
+		coll: coll,
 	}
 }
 
-func (r *MongoTokenRepository) Save(ctx context.Context, tokens domain.Token) error {
+func (r *mongoTokenRepo) CreateVCode(ctx context.Context, token *domain.VToken) error {
+
+	// Check if token already exists for this user
+	filter := bson.M{"user_id": token.UserID}
+	result := r.coll.FindOne(ctx, filter)
+
+	if result.Err() == nil {
+		// Token already exists, replace it with the new one
+		update := bson.M{
+			"$set": bson.M{
+				"token_type": token.TokenType,
+				"token":      token.Token,
+				"expires_at": token.ExpiresAt,
+			},
+		}
+
+		_, err := r.coll.UpdateOne(ctx, filter, update)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	// No existing token found, insert the new one
+	_, err := r.coll.InsertOne(ctx, token)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *mongoTokenRepo) DeleteVCode(ctx context.Context, id string) error {
+
+	filter := bson.M{"user_id": id}
+	result, err := r.coll.DeleteOne(ctx, filter)
+
+	if err != nil {
+		return errors.New("internal server error")
+	}
+
+	if result.DeletedCount == 0 {
+		return errors.New("token not found")
+	}
+
+	return nil
+}
+
+func (r *mongoTokenRepo) GetVCode(ctx context.Context, id string) (*domain.VToken, error) {
+
+	filter := bson.M{"user_id": id}
+	result := r.coll.FindOne(ctx, filter)
+	if errors.Is(result.Err(), mongo.ErrNoDocuments) {
+		return nil, errors.New("token not found")
+	}
+
+	var token *domain.VToken
+	err := result.Decode(&token)
+	if err != nil {
+		return nil, errors.New("internal server error")
+	}
+
+	return token, nil
+}
+
+func (r *mongoTokenRepo) Save(ctx context.Context, tokens domain.Token) error {
 	filter := bson.M{"user_id": tokens.UserID}
 
 	update := bson.M{
@@ -40,7 +105,8 @@ func (r *MongoTokenRepository) Save(ctx context.Context, tokens domain.Token) er
 			"createdAt": time.Now(),
 		},
 	}
-	_, err := r.collection.UpdateOne(ctx, filter, update, options.Update().SetUpsert(true))
+
+	_, err := r.coll.UpdateOne(ctx, filter, update, options.Update().SetUpsert(true))
 	if err != nil {
 
 	}
@@ -48,10 +114,10 @@ func (r *MongoTokenRepository) Save(ctx context.Context, tokens domain.Token) er
 	return nil
 }
 
-func (r *MongoTokenRepository) FindByUserID(ctx context.Context, userID string) (*domain.Token, error) {
+func (r *mongoTokenRepo) FindByUserID(ctx context.Context, userID string) (*domain.Token, error) {
 	var tokens domain.Token
 
-	err := r.collection.FindOne(ctx, bson.M{"user_id": userID}).Decode(&tokens)
+	err := r.coll.FindOne(ctx, bson.M{"user_id": userID}).Decode(&tokens)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, ErrTokenNotFound
@@ -62,8 +128,8 @@ func (r *MongoTokenRepository) FindByUserID(ctx context.Context, userID string) 
 	return &tokens, nil
 }
 
-func (r *MongoTokenRepository) DeleteByUserID(ctx context.Context, userID string) error {
-	result, err := r.collection.DeleteOne(ctx, bson.M{"user_id": userID})
+func (r *mongoTokenRepo) DeleteByUserID(ctx context.Context, userID string) error {
+	result, err := r.coll.DeleteOne(ctx, bson.M{"user_id": userID})
 	if err != nil {
 		return err
 	}
@@ -74,3 +140,7 @@ func (r *MongoTokenRepository) DeleteByUserID(ctx context.Context, userID string
 
 	return nil
 }
+
+
+
+
