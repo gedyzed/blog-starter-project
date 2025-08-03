@@ -2,12 +2,8 @@ package routers
 
 import (
 	"github.com/gin-gonic/gin"
-	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/gedyzed/blog-starter-project/Delivery/Controllers"
-	"github.com/gedyzed/blog-starter-project/Infrastructure"
-	"github.com/gedyzed/blog-starter-project/Repository"
-	"github.com/gedyzed/blog-starter-project/Usecases"
 )
 
 func RegisterBlogRoutes(r *gin.Engine, handler *controllers.BlogHandler) {
@@ -21,21 +17,12 @@ func RegisterBlogRoutes(r *gin.Engine, handler *controllers.BlogHandler) {
 	}
 }
 
-func SetUp(db *mongo.Database, route *gin.Engine) {
+func RegisterUserRoutes(r *gin.Engine, handler *controllers.UserController) {
 
-	public := route.Group("")
-	RegisterUser(db, public)
+	users := r.Group("/users")
 
-}
-
-func RegisterUser(db *mongo.Database, route *gin.RouterGroup) {
-
-	userRepo := repository.NewUserMongoRepo(db)
-	passwordService := infrastructure.NewPasswordService()
-	tokenService := infrastructure.NewJWTTokenService("TODO")
-	userUsecase := usecases.NewUserUsecase(userRepo, tokenService, passwordService)
-	userController := controllers.NewUserController(userUsecase)
-
-	route.POST("/register", userController.RegisterUser)
-	route.POST("/login", userController.Login)
+	{
+		users.POST("/register", handler.RegisterUser)
+		users.POST("/login", handler.Login)
+	}
 }

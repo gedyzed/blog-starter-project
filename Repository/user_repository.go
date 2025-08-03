@@ -19,9 +19,9 @@ type mongoUserRepo struct {
 	coll *mongo.Collection
 }
 
-func NewUserMongoRepo(db *mongo.Database) domain.IUserRepository {
+func NewMongoUserRepo(coll *mongo.Collection) domain.IUserRepository {
 	return &mongoUserRepo{
-		coll: db.Collection("users"),
+		coll,
 	}
 }
 
