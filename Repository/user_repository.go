@@ -9,14 +9,17 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+var (
+	ErrUserNotFound     = errors.New("user not found")
+	ErrUserAlreadyExist = errors.New("user already exists")
+)
+
 type mongoUserRepo struct {
 	coll *mongo.Collection
 }
 
-func NewUserMongoRepo(db *mongo.Database) domain.IUserRepository {
-	return &mongoUserRepo{
-		coll: db.Collection("users"),
-	}
+func NewMongoUserRepo(coll *mongo.Collection) domain.IUserRepository {
+	return &mongoUserRepo{coll: coll}
 }
 
 func (r *mongoUserRepo) Add(ctx context.Context, user *domain.User) error {
@@ -67,7 +70,7 @@ func (r *mongoUserRepo) GetByEmail(ctx context.Context, email string) (*domain.U
 
 func (r *mongoUserRepo) GetByUsername(ctx context.Context, username string) (*domain.User, error) {
 
-		// Check for duplicate username
+	// Check for duplicate username
 	filter := bson.M{"username": username}
 	result := r.coll.FindOne(ctx, filter)
 
