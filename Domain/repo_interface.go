@@ -18,3 +18,4 @@ type CommentRepository interface {
 	EditComment(ctx context.Context, blogID string, id string, userID string, message string) error
 	DeleteComment(ctx context.Context, blogID string, id string, userID string) error
 }
+

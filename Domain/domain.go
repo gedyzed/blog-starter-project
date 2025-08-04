@@ -1,42 +1,52 @@
 package domain
 
 import (
+	"context"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type IUserRepository interface {
-	Add(user User) error
-	Update(id string, user User) error
-	Delete(id string) error
-	Get(id string) (*User, error)
+
+	Add(ctx context.Context, user *User) error
+	Update(ctx context.Context, id string, user *User) error
+	Delete(ctx context.Context, id string) error
+	Get(ctx context.Context, id string) (*User, error)
+	GetByEmail(ctx context.Context, email string)(*User, error)
+	GetByUsername(ctx context.Context, username string)(*User, error)
 }
+
 
 // User represents a user in the system
 type User struct {
-	ID        string    `json:"id" bson:"user_id"`
-	Firstname string    `json:"firstname" bson:"firstname"`
-	LastName  string    `json:"lastname" bson:"lastname"`
-	Username  string    `json:"username" bson:"username"`
-	Email     string    `json:"email" bson:"email"`
-	Role      string    `json:"role" bson:"role"`
-	Password  string    `json:"-" bson:"password"` // "-" means don't include in JSON
-	CreatedAt time.Time `json:"created_at" bson:"created_at"`
-	UpdatedAt time.Time `json:"updated_at" bson:"updated_at"`
+	ID        string 			 `json:"id" bson:"_id"`
+    Firstname string             `json:"firstname" bson:"firstname"`
+    Lastname  string             `json:"lastname" bson:"lastname"`
+    Username  string             `json:"username" bson:"username"`
+    Email     string             `json:"email" bson:"email"`
+    VCode     string             `json:"vcode" bson:"-"`
+    Role      string             `json:"role" bson:"role"`
+    Password  string             `json:"password" bson:"password"`
+    CreatedAt time.Time          `json:"created_at" bson:"created_at"`
+    UpdatedAt time.Time          `json:"updated_at" bson:"updated_at"`
+	
+    // ← embed Profile here
+    Profile Profile `json:"profile" bson:"profile"`
 }
 
-// Profile represents a user's profile information
+type ContactInformation struct {
+	PhoneNumber string `json:"phone_number"`
+	Location    string `json:"location"`
+}
+
 type Profile struct {
-	ID             string    `json:"id" bson:"profile_id"`
-	UserID         string    `json:"user_id" bson:"user_id"`
-	Bio            string    `json:"bio" bson:"bio"`
-	ContactInfo    string    `json:"contact_info" bson:"contact_info"`
-	PhoneNumber    string    `json:"phone_number" bson:"phone_number"`
-	Location       string    `json:"location" bson:"location"`
-	ProfilePicture string    `json:"profile_picture" bson:"profile_picture"`
-	CreatedAt      time.Time `json:"created_at" bson:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at" bson:"updated_at"`
+	ID                 primitive.ObjectID `json:"id" bson:"_id"`
+	Bio                string             `json:"bio" bson:"bio"`
+	ContactInformation ContactInformation  `json:"contact_information" bson:"contact_information"`
+	ProfilePicture     string             `json:"profile_picture" bson:"profile_picture"`
+	CreatedAt          time.Time          `json:"created_at" bson:"created_at"`
+	UpdatedAt          time.Time          `json:"updated_at" bson:"updated_at"`
 }
 
 // Blog represents a blog post
@@ -61,19 +71,15 @@ type Comment struct {
 	Updated time.Time 		   `json:"updated_at" bson:"updated_at"`
 }
 
-type ITokenRepository interface {
-	GetTokenByUserID(string) (*Token, error)
-	Delete(string) error
-}
-
 // Token represents authentication tokens
 type Token struct {
-	ID           string    `json:"id" bson:"token_id"`
-	UserID       string    `json:"user_id" bson:"user_id"`
-	AccessToken  string    `json:"access_token" bson:"access_token"`
-	RefreshToken string    `json:"refresh_token" bson:"refresh_token"`
-	ExpiresAt    time.Time `json:"expires_at" bson:"expires_at"`
-	CreatedAt    time.Time `json:"created_at" bson:"created_at"`
+	UserID        string    `json:"user_id" bson:"user_id"`
+	AccessToken   string    `json:"access_token" bson:"access_token"`
+	RefreshToken  string    `json:"refresh_token" bson:"refresh_token"`
+	AccessExpiry  time.Time `json:"access_expiry" bson:"access_expiry"`
+	RefreshExpiry time.Time `json:"refresh_expiry" bson:"refresh_expiry"`
+	CreatedAt     time.Time `json:"created_at" bson:"created_at"`
+	UpdatedAt     time.Time `json:"expires_at" bson:"expires_at"`
 }
 
 // Like represents a like on a blog post
@@ -104,15 +110,40 @@ type AISuggestion struct {
 	CreatedAt  time.Time `json:"created_at" bson:"created_at"`
 }
 
+
+type VToken struct {
+	UserID string `json:"user_id" bson:"user_id"`
+	TokenType string `json:"token_type" bson:"token_type"`
+	Token string `json:"-" bson:"token"`
+	ExpiresAt time.Time `json:"expires_at" bson:"expires_at"`
+}
+
+type EmailRequest struct {
+	Email string `json:"email"`
+}
+
+type ITokenRepo interface{
+	CreateVCode(ctx context.Context, token *VToken) error
+	DeleteVCode(ctx context.Context, id string) error
+	GetVCode(ctx context.Context, id string)(*VToken, error)
+	Save(ctx context.Context, tokens Token) error
+	FindByUserID(ctx context.Context, userID string) (*Token, error)
+	DeleteByUserID(ctx context.Context, userID string) error
+}
+
 type IPasswordService interface {
 	Hash(string) (string, error)
-	Verify(string, string) error
+	Verify(password, hashedPassword string) error
 }
 
 type ITokenService interface {
-	GenerateToken() (*Token, error)
-	ValidateToken(string) error
-	RefreshToken(string) (string, error)
+	SendEmail(to []string, subject string, body string) error
+}
+
+type IJWTService interface {
+	GenerateTokens(ctx context.Context, userID string) (*Token, error)
+	VerifyAccessToken(string) (string, error)
+	RefreshTokens(ctx context.Context, refreshToken string) (*Token, error)
 }
 
 // BlogUpdateInput for updating a blog
@@ -124,8 +155,12 @@ type BlogUpdateInput struct {
 }
 
 type PaginatedBlogResponse struct {
-    Blogs       []Blog `json:"blogs"`
-    TotalCount  int    `json:"total_count"`
-    TotalPages  int    `json:"total_pages"`
-    CurrentPage int    `json:"current_page"`
+	Blogs       []Blog `json:"blogs"`
+	TotalCount  int    `json:"total_count"`
+	TotalPages  int    `json:"total_pages"`
+	CurrentPage int    `json:"current_page"`
 }
+
+
+
+

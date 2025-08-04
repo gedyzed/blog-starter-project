@@ -4,15 +4,15 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/gedyzed/blog-starter-project/Domain"
 	"github.com/gin-gonic/gin"
-	domain "github.com/gedyzed/blog-starter-project/Domain"
 )
 
 type BlogHandler struct {
-	blogUsecase domain.BlogUsecase 
+	blogUsecase domain.BlogUsecase
 }
 
-func NewBlogHandler(blogUsecase domain.BlogUsecase) *BlogHandler { 
+func NewBlogHandler(blogUsecase domain.BlogUsecase) *BlogHandler {
 	return &BlogHandler{blogUsecase: blogUsecase}
 }
 
@@ -61,7 +61,7 @@ func (h *BlogHandler) DeleteBlog(c *gin.Context) {
 		return
 	}
 
-	err := h.blogUsecase.DeleteBlog(c.Request.Context(), id, userID) 
+	err := h.blogUsecase.DeleteBlog(c.Request.Context(), id, userID)
 	if err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		return
@@ -102,7 +102,7 @@ func (h *BlogHandler) GetBlogById(c *gin.Context) {
 	ctx := c.Request.Context()
 	blogID := c.Param("id")
 
-	blog, err := h.blogUsecase.GetBlogByID(ctx, blogID) 
+	blog, err := h.blogUsecase.GetBlogByID(ctx, blogID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -120,7 +120,7 @@ func (h *BlogHandler) CreateBlog(c *gin.Context) {
 		return
 	}
 
-	createdBlog, err := h.blogUsecase.CreateBlog(ctx, newBlog) 
+	createdBlog, err := h.blogUsecase.CreateBlog(ctx, newBlog)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
