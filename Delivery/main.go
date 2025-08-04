@@ -19,14 +19,18 @@ func main() {
 
 	db := config.DbInit()
 	blogCollection := db.Collection("blogs")
+	commentCollection := db.Collection("comments")
 
 	blogRepo := repository.NewBlogRepository(blogCollection)
 	blogUsecase := usecases.NewBlogUsecase(blogRepo)
 	blogHandler := controllers.NewBlogHandler(blogUsecase)
+	commentRepo := repository.NewCommentRepository(commentCollection)
+	commentUsecase := usecases.NewCommentUsecase(commentRepo)
+	commentHandler := controllers.NewCommentHandler(commentUsecase)
 
 	r := gin.Default()
 
-	routers.RegisterBlogRoutes(r, blogHandler)
+	routers.RegisterBlogRoutes(r, blogHandler, commentHandler)
 
 	port := os.Getenv("PORT")
 	if port == "" {
