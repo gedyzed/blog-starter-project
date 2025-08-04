@@ -95,8 +95,7 @@ func (h *CommentHandler) EditComment(c *gin.Context) {
 
 	blogID := c.Param("blogId") 
 	commentID := c.Param("id")
-	// userID := c.MustGet("userID").(string)
-	userID := "64d9e599e3226f3c6d77376f"
+	userID := c.MustGet("userID").(string)
 
 	var input struct {
 		Message string `json:"message" binding:"required"`
