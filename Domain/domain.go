@@ -8,31 +8,29 @@ import (
 )
 
 type IUserRepository interface {
-
 	Add(ctx context.Context, user *User) error
 	Update(ctx context.Context, id string, user *User) error
 	Delete(ctx context.Context, id string) error
 	Get(ctx context.Context, id string) (*User, error)
-	GetByEmail(ctx context.Context, email string)(*User, error)
-	GetByUsername(ctx context.Context, username string)(*User, error)
+	GetByEmail(ctx context.Context, email string) (*User, error)
+	GetByUsername(ctx context.Context, username string) (*User, error)
 }
-
 
 // User represents a user in the system
 type User struct {
-	ID        string 			 `json:"id" bson:"_id"`
-    Firstname string             `json:"firstname" bson:"firstname"`
-    Lastname  string             `json:"lastname" bson:"lastname"`
-    Username  string             `json:"username" bson:"username"`
-    Email     string             `json:"email" bson:"email"`
-    VCode     string             `json:"vcode" bson:"-"`
-    Role      string             `json:"role" bson:"role"`
-    Password  string             `json:"password" bson:"password"`
-    CreatedAt time.Time          `json:"created_at" bson:"created_at"`
-    UpdatedAt time.Time          `json:"updated_at" bson:"updated_at"`
-	
-    // ← embed Profile here
-    Profile Profile `json:"profile" bson:"profile"`
+	ID        string    `json:"id" bson:"_id"`
+	Firstname string    `json:"firstname" bson:"firstname"`
+	Lastname  string    `json:"lastname" bson:"lastname"`
+	Username  string    `json:"username" bson:"username"`
+	Email     string    `json:"email" bson:"email"`
+	VCode     string    `json:"vcode" bson:"-"`
+	Role      string    `json:"role" bson:"role"`
+	Password  string    `json:"password" bson:"password"`
+	CreatedAt time.Time `json:"created_at" bson:"created_at"`
+	UpdatedAt time.Time `json:"updated_at" bson:"updated_at"`
+
+	// ← embed Profile here
+	Profile Profile `json:"profile" bson:"profile"`
 }
 
 type ContactInformation struct {
@@ -43,7 +41,7 @@ type ContactInformation struct {
 type Profile struct {
 	ID                 primitive.ObjectID `json:"id" bson:"_id"`
 	Bio                string             `json:"bio" bson:"bio"`
-	ContactInformation ContactInformation  `json:"contact_information" bson:"contact_information"`
+	ContactInformation ContactInformation `json:"contact_information" bson:"contact_information"`
 	ProfilePicture     string             `json:"profile_picture" bson:"profile_picture"`
 	CreatedAt          time.Time          `json:"created_at" bson:"created_at"`
 	UpdatedAt          time.Time          `json:"updated_at" bson:"updated_at"`
@@ -51,14 +49,18 @@ type Profile struct {
 
 // Blog represents a blog post
 type Blog struct {
-	ID        primitive.ObjectID `json:"id" bson:"_id,omitempty"` // uses MongoDB's native ObjectID
-	UserID    primitive.ObjectID `json:"user_id" bson:"user_id"`
-	Title     string             `json:"title" bson:"title"`
-	Content   string             `json:"content" bson:"content"`
-	Created   time.Time          `json:"created" bson:"created"`
-	Updated   time.Time          `json:"updated" bson:"updated"`
-	ViewCount int                `json:"view_count" bson:"view_count"`
-	Tags      []string           `json:"tags" bson:"tags"`
+	ID            primitive.ObjectID `json:"id" bson:"_id,omitempty"` // uses MongoDB's native ObjectID
+	UserID        primitive.ObjectID `json:"user_id" bson:"user_id"`
+	Title         string             `json:"title" bson:"title"`
+	Content       string             `json:"content" bson:"content"`
+	Created       time.Time          `json:"created" bson:"created"`
+	Updated       time.Time          `json:"updated" bson:"updated"`
+	ViewCount     int                `json:"view_count" bson:"view_count"`
+	Tags          []string           `json:"tags" bson:"tags"`
+	Likes         int                `json:"likes" bson:"likes"`
+	Dislikes      int                `json:"dislikes" bson:"dislikes"`
+	LikedUsers    []string           `json:"liked_users" bson:"liked_users"`
+	DislikedUsers []string           `json:"disliked_users" bson:"disliked_users"`
 }
 
 // Comment represents a comment on a blog post
@@ -109,11 +111,10 @@ type AISuggestion struct {
 	CreatedAt  time.Time `json:"created_at" bson:"created_at"`
 }
 
-
 type VToken struct {
-	UserID string `json:"user_id" bson:"user_id"`
-	TokenType string `json:"token_type" bson:"token_type"`
-	Token string `json:"-" bson:"token"`
+	UserID    string    `json:"user_id" bson:"user_id"`
+	TokenType string    `json:"token_type" bson:"token_type"`
+	Token     string    `json:"-" bson:"token"`
 	ExpiresAt time.Time `json:"expires_at" bson:"expires_at"`
 }
 
@@ -121,10 +122,10 @@ type EmailRequest struct {
 	Email string `json:"email"`
 }
 
-type ITokenRepo interface{
+type ITokenRepo interface {
 	CreateVCode(ctx context.Context, token *VToken) error
 	DeleteVCode(ctx context.Context, id string) error
-	GetVCode(ctx context.Context, id string)(*VToken, error)
+	GetVCode(ctx context.Context, id string) (*VToken, error)
 	Save(ctx context.Context, tokens Token) error
 	FindByUserID(ctx context.Context, userID string) (*Token, error)
 	DeleteByUserID(ctx context.Context, userID string) error
@@ -159,7 +160,3 @@ type PaginatedBlogResponse struct {
 	TotalPages  int    `json:"total_pages"`
 	CurrentPage int    `json:"current_page"`
 }
-
-
-
-

@@ -3,10 +3,8 @@ package routers
 import (
 	"github.com/gin-gonic/gin"
 
-	"github.com/gedyzed/blog-starter-project/Delivery/Controllers"
-
+	controllers "github.com/gedyzed/blog-starter-project/Delivery/Controllers"
 )
-
 
 func RegisterBlogRoutes(r *gin.Engine, handler *controllers.BlogHandler) {
 	blog := r.Group("/blogs")
@@ -16,6 +14,9 @@ func RegisterBlogRoutes(r *gin.Engine, handler *controllers.BlogHandler) {
 		blog.GET("/:id", handler.GetBlogById)
 		blog.PUT("/:id", handler.UpdateBlog)
 		blog.DELETE("/:id", handler.DeleteBlog)
+		blog.POST("/:id/like", handler.LikeBlog)
+		blog.POST("/:id/dislike", handler.DislikeBlog)
+
 	}
 }
 
@@ -29,7 +30,7 @@ func RegisterUserRoutes(r *gin.Engine, handler *controllers.UserController) {
 	}
 }
 
-func RegisterTokenRoutes(r *gin.Engine, handler *controllers.TokenController){
+func RegisterTokenRoutes(r *gin.Engine, handler *controllers.TokenController) {
 
 	tokens := r.Group("/tokens/")
 
@@ -37,11 +38,3 @@ func RegisterTokenRoutes(r *gin.Engine, handler *controllers.TokenController){
 		tokens.POST("/send-vcode", handler.SendVerificationEmail) // send verification email
 	}
 }
-
-
-
-
-
-
-
-

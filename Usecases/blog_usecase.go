@@ -2,8 +2,10 @@ package usecases
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
+
 	domain "github.com/gedyzed/blog-starter-project/Domain"
 )
 
@@ -40,7 +42,7 @@ func (uc *blogUsecase) GetBlogByID(ctx context.Context, id string) (*domain.Blog
 	if err != nil {
 		return nil, err
 	}
-	_ = uc.blogRepo.IncrementBlogViews(ctx, id) 
+	_ = uc.blogRepo.IncrementBlogViews(ctx, id)
 	return blog, nil
 }
 
@@ -52,9 +54,38 @@ func (uc *blogUsecase) CreateBlog(ctx context.Context, blog domain.Blog) (*domai
 }
 
 func (uc *blogUsecase) UpdateBlog(ctx context.Context, id string, userID string, input domain.BlogUpdateInput) error {
+	if input.Title == "" && input.Content == "" && len(input.Tags) == 0 {
+		return errors.New("nothing to update")
+	}
 	return uc.blogRepo.UpdateBlog(ctx, id, userID, input)
 }
 
 func (uc *blogUsecase) DeleteBlog(ctx context.Context, id string, userID string) error {
 	return uc.blogRepo.DeleteBlog(ctx, id, userID)
+}
+
+func (uc *blogUsecase) LikeBlog(ctx context.Context, blogID string, userID string) error {
+	_, err := uc.blogRepo.GetBlogByID(ctx, blogID)
+	if err != nil {
+		return fmt.Errorf("blog not found: %w", err)
+	}
+	err = uc.blogRepo.LikeBlog(ctx, blogID, userID)
+	if err != nil {
+		return fmt.Errorf("failed to like: %w", err)
+	}
+	return nil
+}
+
+func (uc *blogUsecase) DislikeBlog(ctx context.Context, blogID string, userID string) error {
+
+	_, err := uc.blogRepo.GetBlogByID(ctx, blogID)
+	if err != nil {
+		return fmt.Errorf("blog not found: %w", err)
+	}
+
+	err = uc.blogRepo.DislikeBlog(ctx, blogID, userID)
+	if err != nil {
+		return fmt.Errorf("failed to dislike: %w", err)
+	}
+	return nil
 }

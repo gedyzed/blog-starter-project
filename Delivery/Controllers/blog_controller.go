@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gedyzed/blog-starter-project/Domain"
+	domain "github.com/gedyzed/blog-starter-project/Domain"
 	"github.com/gin-gonic/gin"
 )
 
@@ -61,9 +61,31 @@ func (h *BlogHandler) DeleteBlog(c *gin.Context) {
 		return
 	}
 
-	err := h.blogUsecase.DeleteBlog(c.Request.Context(), id, userID)
+	roleVal, exists := c.Get("role")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "role not found"})
+		return
+
+	}
+
+	role, ok := roleVal.(string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "role is not a string"})
+		return
+	}
+
+	blog, err := h.blogUsecase.GetBlogByID(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		c.JSON(http.StatusNotFound, gin.H{"error": "blog not found"})
+		return
+	}
+	if blog.UserID.Hex() != userID && role != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "not authorized to delete this blog"})
+		return
+	}
+	err = h.blogUsecase.DeleteBlog(c.Request.Context(), id, userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -127,4 +149,52 @@ func (h *BlogHandler) CreateBlog(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, createdBlog)
+}
+
+func (h *BlogHandler) LikeBlog(c *gin.Context) {
+	ctx := c.Request.Context()
+	blogID := c.Param("id")
+
+	userIDVal, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	userID, ok := userIDVal.(string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "user ID isnot string"})
+		return
+	}
+	err := h.blogUsecase.LikeBlog(ctx, blogID, userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "blog liked successfully"})
+}
+
+func (h *BlogHandler) DislikeBlog(c *gin.Context) {
+	ctx := c.Request.Context()
+	blogID := c.Param("id")
+
+	userIDVal, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	userID, ok := userIDVal.(string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "user ID isnot a string"})
+		return
+	}
+
+	err := h.blogUsecase.DislikeBlog(ctx, blogID, userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "blog disliked successfully"})
+
 }
