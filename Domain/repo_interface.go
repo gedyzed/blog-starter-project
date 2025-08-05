@@ -8,7 +8,7 @@ type BlogRepository interface {
 	IncrementBlogViews(ctx context.Context, id string) error
 	CreateBlog(ctx context.Context, blog Blog) (*Blog, error)
 	UpdateBlog(ctx context.Context, id string, userID string, updatedBlog BlogUpdateInput) error
-	DeleteBlog(ctx context.Context, id string, userID string) error
+	DeleteBlog(ctx context.Context, id string) error
 	LikeBlog(ctx context.Context, blogID string, userID string) error
 	DislikeBlog(ctx context.Context, blogID string, userID string) error
 }

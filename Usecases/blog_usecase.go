@@ -60,8 +60,17 @@ func (uc *blogUsecase) UpdateBlog(ctx context.Context, id string, userID string,
 	return uc.blogRepo.UpdateBlog(ctx, id, userID, input)
 }
 
-func (uc *blogUsecase) DeleteBlog(ctx context.Context, id string, userID string) error {
-	return uc.blogRepo.DeleteBlog(ctx, id, userID)
+func (uc *blogUsecase) DeleteBlog(ctx context.Context, id string, userID string, role string) error {
+	blog, err := uc.blogRepo.GetBlogByID(ctx, id)
+	if err != nil {
+		return errors.New("blog not found")
+	}
+
+	if blog.UserID.Hex() != userID && role != "admin" {
+		return errors.New("unauthorized access")
+	}
+
+	return uc.blogRepo.DeleteBlog(ctx, id)
 }
 
 func (uc *blogUsecase) LikeBlog(ctx context.Context, blogID string, userID string) error {

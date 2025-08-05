@@ -45,51 +45,34 @@ func (h *BlogHandler) UpdateBlog(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "blog updated successfully"})
 }
+func (bc *BlogHandler) DeleteBlog(c *gin.Context) {
+	blogID := c.Param("id")
 
-func (h *BlogHandler) DeleteBlog(c *gin.Context) {
-	id := c.Param("id")
-
-	userIDVal, exists := c.Get("userID")
+	userID, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
-	userID, ok := userIDVal.(string)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "user ID is not a string"})
-		return
-	}
-
-	roleVal, exists := c.Get("role")
+	userRole, exists := c.Get("role")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "role not found"})
-		return
-
-	}
-
-	role, ok := roleVal.(string)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "role is not a string"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
-	blog, err := h.blogUsecase.GetBlogByID(c.Request.Context(), id)
+	err := bc.blogUsecase.DeleteBlog(c.Request.Context(), blogID, userID.(string), userRole.(string))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "blog not found"})
-		return
-	}
-	if blog.UserID.Hex() != userID && role != "admin" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "not authorized to delete this blog"})
-		return
-	}
-	err = h.blogUsecase.DeleteBlog(c.Request.Context(), id, userID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if err.Error() == "blog not found" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Blog not found"})
+		} else if err.Error() == "unauthorized access" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "You are not allowed to delete this blog"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
+		}
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "blog deleted successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Blog deleted successfully"})
 }
 
 func (h *BlogHandler) GetAllBlogs(c *gin.Context) {

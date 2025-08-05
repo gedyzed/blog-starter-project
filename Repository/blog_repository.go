@@ -118,16 +118,13 @@ func (r *blogRepository) UpdateBlog(ctx context.Context, id string, userID strin
 	return nil
 }
 
-func (r *blogRepository) DeleteBlog(ctx context.Context, id string, userID string) error {
+func (r *blogRepository) DeleteBlog(ctx context.Context, id string) error {
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return err
 	}
-	userObjID, err := primitive.ObjectIDFromHex(userID)
-	if err != nil {
-		return err
-	}
-	res, err := r.collection.DeleteOne(ctx, bson.M{"_id": objID, "user_id": userObjID})
+
+	res, err := r.collection.DeleteOne(ctx, bson.M{"_id": objID})
 	if err != nil {
 		return err
 	}
@@ -136,6 +133,7 @@ func (r *blogRepository) DeleteBlog(ctx context.Context, id string, userID strin
 	}
 	return nil
 }
+
 func (r *blogRepository) LikeBlog(ctx context.Context, id string, userID string) error {
 	blogID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
