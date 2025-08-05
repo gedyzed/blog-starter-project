@@ -30,6 +30,12 @@ func RegisterUserRoutes(r *gin.Engine, handler *controllers.UserController) {
 		users.POST("/reset-password", handler.ResetPassword)
 	}
 
+	admins := r.Group("/admins")
+
+	{
+		admins.POST("/promote-demote-user", handler.PromoteDemoteUser)
+	}
+
 	
 
 }
