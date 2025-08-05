@@ -50,11 +50,11 @@ type IPasswordService interface {
 	Verify(password, hashedPassword string) error
 }
 
-type ITokenService interface {
+type IVTokenService interface {
 	SendEmail(to []string, subject string, body string) error
 }
 
-type IJWTService interface {
+type ITokenService interface {
 	GenerateTokens(ctx context.Context, userID string) (*Token, error)
 	VerifyAccessToken(string) (string, error)
 	RefreshTokens(ctx context.Context, refreshToken string) (*Token, error)

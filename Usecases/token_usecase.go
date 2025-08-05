@@ -18,9 +18,8 @@ var (
 	ResetPasswordEmailSubject = "Subject: Sending Password Reset Link"
 	ResetPasswordEmailBodyText = "Here is the link to reset your password click the link " 
 	ResetPasswordRoute = "/users/reset-password?token="
-	ResetPasswordEmailBody = ResetPasswordEmailBodyText + ResetPasswordRoute
-	
 
+	
 	EmailVerificationSubject = "Subject: Sending Email Verification Code"
 	EmailVerificationBody = "Here is you verification code: "
 )
@@ -29,7 +28,6 @@ var (
 
 	ErrIncorrectToken = errors.New("incorrect token")
 	ErrExpiredToken = errors.New("expired token")
-
 
 )
 
@@ -50,16 +48,16 @@ type ITokenUsecase interface{
 type tokenUsecase struct {
 	tokenRepo domain.ITokenRepo
 	vtokenRepo domain.IVTokenRepo
-	codeServices domain.ITokenService
-	jwtServices domain.IJWTService
+	vtokenServices domain.IVTokenService
+	tokenService domain.ITokenService
 }
 
-func NewTokenUsecase(tokenRepo domain.ITokenRepo,  vtokenRepo domain.IVTokenRepo, svs domain.ITokenService, js domain.IJWTService) ITokenUsecase {
+func NewTokenUsecase(tokenRepo domain.ITokenRepo,  vtokenRepo domain.IVTokenRepo, svs domain.IVTokenService, js domain.ITokenService) ITokenUsecase {
 	return &tokenUsecase{
 						tokenRepo: tokenRepo, 
 						vtokenRepo: vtokenRepo,
-						codeServices: svs, 
-						jwtServices:js, 
+						vtokenServices: svs, 
+						tokenService:js, 
 					}
 } 
 
@@ -88,17 +86,17 @@ func(t *tokenUsecase) CreateSendVCode(ctx context.Context, userID string, tokenT
 	}
 
 	if vtoken.TokenType == Email_Verification {
-		return t.codeServices.SendEmail(
+		return t.vtokenServices.SendEmail(
 										[]string{userID,},
 										EmailVerificationSubject,
 										EmailVerificationBody + token,
 										)
 	}
 
-	return t.codeServices.SendEmail(
+	return t.vtokenServices.SendEmail(
 									[]string{userID,}, 	
 									ResetPasswordEmailSubject, 
-									ResetPasswordEmailBody + token,
+									ResetPasswordRoute + token,
 								)
 }
 
@@ -140,15 +138,15 @@ func (t *tokenUsecase) FindByUserID(ctx context.Context, userID string) (*domain
 }
 
 func (t *tokenUsecase) RefreshTokens(ctx context.Context, refreshToken string) (*domain.Token, error){
-		return t.jwtServices.RefreshTokens(ctx, refreshToken)
+		return t.tokenService.RefreshTokens(ctx, refreshToken)
 } 
 
 func (t *tokenUsecase) GenerateTokens(ctx context.Context, userID string) (*domain.Token, error){
-		return t.jwtServices.GenerateTokens(ctx, userID)
+		return t.tokenService.GenerateTokens(ctx, userID)
 }
 
 func (t *tokenUsecase) VerifyAccessToken(tokenString string) (string, error){
-	return t.jwtServices.VerifyAccessToken(tokenString)	
+	return t.tokenService.VerifyAccessToken(tokenString)	
 }
 
 func (t *tokenUsecase) DeleteByUserID(ctx context.Context, userID string) error{

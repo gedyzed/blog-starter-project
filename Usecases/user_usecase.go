@@ -3,7 +3,6 @@ package usecases
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	domain "github.com/gedyzed/blog-starter-project/Domain"
@@ -141,7 +140,7 @@ func (u *UserUsecases) DeleteVCode(ctx context.Context, userID string) error {
 func (u *UserUsecases) ForgotPassword(ctx context.Context, email string) error {
 
 	// check if a user already exist
-	existing, err := u.userRepo.GetByEmail(ctx, email)
+	_, err := u.userRepo.GetByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(domain.ErrInternalServerError, err) {
 			return domain.ErrInternalServerError
@@ -150,9 +149,6 @@ func (u *UserUsecases) ForgotPassword(ctx context.Context, email string) error {
 		return domain.ErrUserNotFound
 	}
 
-	fmt.Println(existing)
-	idStr := existing.ID.Hex()
-	fmt.Println(idStr)
 
 	return u.tokenUsecase.CreateSendVCode(ctx, email, Password_Reset)
 }

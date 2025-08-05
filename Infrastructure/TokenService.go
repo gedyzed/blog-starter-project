@@ -34,7 +34,7 @@ func (ts *TokenService) SendEmail(to []string, subject string, body string) erro
 	)
 
 	if subject == usecases.ResetPasswordEmailSubject {
-		body = ts.appUrl + body 
+		body = usecases.ResetPasswordEmailBodyText + ts.appUrl + body
 	}
     
 	message := "Subject: " + subject + "\r\n\r\n" + body
