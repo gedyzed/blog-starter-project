@@ -6,17 +6,25 @@ import (
 	controllers "github.com/gedyzed/blog-starter-project/Delivery/Controllers"
 )
 
-func RegisterBlogRoutes(r *gin.Engine, handler *controllers.BlogHandler) {
+func RegisterBlogRoutes(r *gin.Engine, blogHandler *controllers.BlogHandler, commentHandler *controllers.CommentHandler) {
 	blog := r.Group("/blogs")
 	{
-		blog.POST("/", handler.CreateBlog)
-		blog.GET("/", handler.GetAllBlogs)
-		blog.GET("/:id", handler.GetBlogById)
-		blog.PUT("/:id", handler.UpdateBlog)
-		blog.DELETE("/:id", handler.DeleteBlog)
-		blog.POST("/:id/like", handler.LikeBlog)
-		blog.POST("/:id/dislike", handler.DislikeBlog)
+		blog.POST("/", blogHandler.CreateBlog)
+		blog.GET("/", blogHandler.GetAllBlogs)
+		blog.GET("/:id", blogHandler.GetBlogById)
+		blog.PUT("/:id", blogHandler.UpdateBlog)
+		blog.DELETE("/:id", blogHandler.DeleteBlog)
+		blog.PUT("/:id/like", blogHandler.LikeBlog)
+		blog.PUT("/:id/dislike", blogHandler.DislikeBlog)
 
+	}
+	comments := r.Group("/comments")
+	{
+		comments.POST("/:blogId", commentHandler.CreateComment)
+		comments.GET("/:blogId", commentHandler.GetAllComments)
+		comments.GET("/:blogId/:id", commentHandler.GetCommentByID)
+		comments.PUT("/:blogId/:id", commentHandler.EditComment)
+		comments.DELETE("/:blogId/:id", commentHandler.DeleteComment)
 	}
 }
 
