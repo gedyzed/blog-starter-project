@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"os"
 	"time"
 
 	domain "github.com/gedyzed/blog-starter-project/Domain"
@@ -18,7 +17,7 @@ var (
 
 	ResetPasswordEmailSubject = "Subject: Sending Password Reset Link"
 	ResetPasswordEmailBodyText = "Here is the link to reset your password click the link " 
-	ResetPasswordRoute = os.Getenv("APP_URL") + "/users/reset-password?token="
+	ResetPasswordRoute = "/users/reset-password?token="
 	ResetPasswordEmailBody = ResetPasswordEmailBodyText + ResetPasswordRoute
 	
 
@@ -85,7 +84,7 @@ func(t *tokenUsecase) CreateSendVCode(ctx context.Context, userID string, tokenT
 	// save the created verification code to db
 	err = t.vtokenRepo.CreateVCode(ctx, &vtoken)
 	if err != nil {
-		return ErrUnexpected 
+		return domain.ErrInternalServerError 
 	}
 
 	if vtoken.TokenType == Email_Verification {

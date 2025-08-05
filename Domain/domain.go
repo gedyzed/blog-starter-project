@@ -133,6 +133,12 @@ type PromoteDemoteStruct struct {
 	UserID string `json:"user_id" binding:"required"`
 }
 
+type ProfileUpdateInput struct {
+	UserID 	  string 			`json:"user_id" binding:"required"`
+	Firstname string             `json:"firstname"`
+    Lastname  string             `json:"lastname"`
+	Profile Profile				`json:"profile" binding:"required"`
+}
 
 
 

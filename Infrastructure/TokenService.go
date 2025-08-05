@@ -4,38 +4,45 @@ import (
 	"errors"
 	"fmt"
 	"net/smtp"
-	"os"
 
-	domain "github.com/gedyzed/blog-starter-project/Domain"
+	"github.com/gedyzed/blog-starter-project/Infrastructure/config"
+	usecases "github.com/gedyzed/blog-starter-project/Usecases"
 )
 
-type TokenSevice struct {}
-
-
-func NewTokenServices() domain.ITokenService {
-	return &TokenSevice{}
+type TokenService struct {
+	emailConfig config.EmailConfig
+	appUrl string
 }
 
 
-func (ts *TokenSevice) SendEmail(to []string, subject string, body string) error {
+func NewTokenService(emailCfg config.EmailConfig, appUrl string) *TokenService {
+	return &TokenService{
+		emailConfig: emailCfg,
+		appUrl: appUrl,
+	}
+}
 
 
-	appPassword := os.Getenv("Mail_APP_PASSWORD")
-	address := "smtp.gmail.com"
+
+func (ts *TokenService) SendEmail(to []string, subject string, body string) error {
+
 	auth := smtp.PlainAuth(
 		"",
-		"gediizeyuu@gmail.com",
-		appPassword,
-		address,
+		ts.emailConfig.SenderEmail,
+		ts.emailConfig.AppPassword,
+		ts.emailConfig.SMTPHost,
 	)
 
-	senderEmail := "gediizeyuu@gmail.com"
+	if subject == usecases.ResetPasswordEmailSubject {
+		body = ts.appUrl + body 
+	}
+    
 	message := "Subject: " + subject + "\r\n\r\n" + body
 
 	err := smtp.SendMail(
-		"smtp.gmail.com:587",
+		ts.emailConfig.SMTPHost + ":" + ts.emailConfig.SMTPPort,
 		auth,
-		senderEmail,
+		ts.emailConfig.SenderEmail,
 		to,
 		[]byte(message),
 	)

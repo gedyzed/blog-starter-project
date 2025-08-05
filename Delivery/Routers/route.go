@@ -37,6 +37,7 @@ func RegisterUserRoutes(r *gin.Engine, handler *controllers.UserController) {
 		users.POST("/login", handler.Login)
 		users.POST("/forgot-password", handler.ForgotPassword)
 		users.POST("/reset-password", handler.ResetPassword)
+		users.POST("/update-profile", handler.ProfileUpdate)
 	}
 
 	admins := r.Group("/admins")

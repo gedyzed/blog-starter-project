@@ -11,12 +11,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-var (
-	ErrUserNotFound     = errors.New("user not found")
-	ErrUserAlreadyExist = errors.New("user already exists")
-	ErrUpdate = errors.New("no fields to update")
-	ErrIncorrectUserID = errors.New("incorrect userID")
-)
 
 type mongoUserRepo struct {
 	coll *mongo.Collection
@@ -32,7 +26,7 @@ func (r *mongoUserRepo) Add(ctx context.Context, user *domain.User) error {
 		if we, ok := err.(mongo.WriteException); ok {
 			for _, e := range we.WriteErrors {
 				if e.Code == 1100 {
-					return ErrUserAlreadyExist
+					return domain.ErrEmailAlreadyExists
 				}
 			}
 		}
@@ -46,47 +40,27 @@ func (r *mongoUserRepo) Add(ctx context.Context, user *domain.User) error {
 func (r *mongoUserRepo) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 
 	// Check for duplicate username
+	var user *domain.User
 	filter := bson.M{"email": email}
-	result := r.coll.FindOne(ctx, filter)
-
-	if result.Err() != nil && errors.Is(result.Err(), mongo.ErrNoDocuments) {
-		return nil, errors.New("user not found")
-	}
-
-	if result.Err() != nil {
-		return nil, errors.New("error while decoding data")
-	}
-
-	var user domain.User
-	err := result.Decode(&user)
+	err := r.coll.FindOne(ctx, filter).Decode(&user)
 	if err != nil {
-		return nil, errors.New("error while decoding data")
-	}
+		return nil, domain.ErrUserNotFound
 
-	return &user, nil
+	}
+	return user, nil
 }
 
 func (r *mongoUserRepo) GetByUsername(ctx context.Context, username string) (*domain.User, error) {
 
-	// Check for duplicate username
+
+	var user *domain.User
 	filter := bson.M{"username": username}
-	result := r.coll.FindOne(ctx, filter)
-
-	if result.Err() != nil && errors.Is(result.Err(), mongo.ErrNoDocuments) {
-		return nil, errors.New("user not found")
-	}
-
-	if result.Err() != nil {
-		return nil, errors.New("error while decoding data")
-	}
-
-	var user domain.User
-	err := result.Decode(&user)
+	err := r.coll.FindOne(ctx, filter).Decode(&user)
 	if err != nil {
-		return nil, errors.New("error while decoding data")
+		return nil, domain.ErrUserNotFound
 	}
 
-	return &user, nil
+	return user, nil
 }
 
 func (r *mongoUserRepo) Update(ctx context.Context, filterField, filterValue string, user *domain.User) error {
@@ -126,7 +100,7 @@ func (r *mongoUserRepo) Update(ctx context.Context, filterField, filterValue str
 	updateFields["updated_at"] = time.Now()
 
 	if len(updateFields) == 0 {
-		return ErrUpdate
+		return domain.ErrNoUpdate
 	}
 
 	update := bson.M{"$set": updateFields}
@@ -147,7 +121,7 @@ func (r *mongoUserRepo) Delete(ctx context.Context, id string) error {
 	}
 
 	if result.DeletedCount == 0 {
-		return ErrUserNotFound
+		return domain.ErrUserNotFound
 	}
 
 	return nil
@@ -157,13 +131,13 @@ func (r *mongoUserRepo) Get(ctx context.Context, id string) (*domain.User, error
 
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return nil, ErrIncorrectUserID
+		return nil, domain.ErrIncorrectUserID
 	}
 
 	query := bson.M{"_id": objID}
 	result := r.coll.FindOne(ctx, query)
 	if errors.Is(result.Err(), mongo.ErrNoDocuments){
-		return nil, ErrIncorrectUserID
+		return nil, domain.ErrIncorrectUserID
 	}
 
 	var existing *domain.User

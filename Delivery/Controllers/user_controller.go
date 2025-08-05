@@ -228,4 +228,37 @@ func (uc *UserController) PromoteDemoteUser(c *gin.Context){
 	c.IndentedJSON(200, gin.H{"message": "Role has been updated successfully"}) 
 }
 
+func(uc *UserController) ProfileUpdate(c *gin.Context){
+
+	ctx := c.Request.Context()
+	var profileUpdate domain.ProfileUpdateInput
+	if err := c.ShouldBindJSON(&profileUpdate); err != nil {
+		c.IndentedJSON(400, gin.H{"error": "invalid input format"})
+		c.Abort()
+		return
+	}
+
+	if profileUpdate.UserID == "" {
+		c.IndentedJSON(400, gin.H{"error": "user Id required"})
+		c.Abort()
+		return
+	}
+
+	pdi := domain.ProfileUpdateInput{}
+	if profileUpdate == pdi {
+		c.IndentedJSON(400, gin.H{"error" : "No profile field to be updated"})
+		c.Abort()
+		return
+	}
+
+	err := uc.userUsecase.ProfileUpdate(ctx, &profileUpdate)
+	if err != nil {
+		c.IndentedJSON(500, gin.H{"error" : err.Error()})
+		c.Abort()
+		return 
+	}
+
+	c.IndentedJSON(200, gin.H{"message": "Profile has been updated successfully"}) 
+}
+
 
