@@ -26,7 +26,12 @@ func RegisterUserRoutes(r *gin.Engine, handler *controllers.UserController) {
 	{
 		users.POST("/register", handler.RegisterUser)
 		users.POST("/login", handler.Login)
+		users.POST("/forgot-password", handler.ForgotPassword)
+		users.POST("/reset-password", handler.ResetPassword)
 	}
+
+	
+
 }
 
 func RegisterTokenRoutes(r *gin.Engine, handler *controllers.TokenController){
@@ -34,7 +39,7 @@ func RegisterTokenRoutes(r *gin.Engine, handler *controllers.TokenController){
 	tokens := r.Group("/tokens/")
 
 	{
-		tokens.POST("/send-vcode", handler.SendVerificationEmail) // send verification email
+		tokens.POST("/send-vcode", handler.SendVerificationEmail) 
 	}
 }
 

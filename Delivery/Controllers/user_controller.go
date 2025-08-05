@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"net/http"
-	"fmt"
 	"regexp"
 
 	domain "github.com/gedyzed/blog-starter-project/Domain"
@@ -103,21 +102,19 @@ func (uc *UserController) RegisterUser(c *gin.Context) {
 		return
 	}
 
-	err := uc.userUsecase.VerifyCode(ctx, user.Email, user.VCode)
+	_, err := uc.userUsecase.VerifyCode(ctx, user.VCode)
 	if err != nil {
 		c.IndentedJSON(500, gin.H{"error": err.Error()})
 		c.Abort()
 		return
 	}
-
+    
 	err = uc.userUsecase.Register(ctx, user)
 	if err != nil {
 		switch err.Error() {
 		case "username already exists":
-			fmt.Println("gb", "username")
 			c.IndentedJSON(409, gin.H{"error": err.Error()})
 		case "email already exists":
-			fmt.Println("email")
 			c.IndentedJSON(409, gin.H{"error": err.Error()})
 		default:
 			c.IndentedJSON(500, gin.H{"error": err.Error()})
@@ -135,6 +132,100 @@ func (uc *UserController) RegisterUser(c *gin.Context) {
 	}
 
 	c.IndentedJSON(200, gin.H{"message": "user created successfully"})
+}
+
+func (uc *UserController) ForgotPassword(c *gin.Context){
+
+	ctx := c.Request.Context()
+
+	var user *domain.User
+	if err := c.ShouldBindJSON(&user); err != nil {
+		c.IndentedJSON(400, gin.H{"error": "invalid input format"})
+		c.Abort()
+		return
+	}
+
+	if user.Email == "" {
+		c.IndentedJSON(400, gin.H{"error": "fill all required fields: email, password(new), vcode."})
+		c.Abort()
+		return
+	}
+
+	
+	err := uc.userUsecase.ForgotPassword(ctx, user.Email)
+	if err != nil {
+		c.IndentedJSON(500, gin.H{"error": err.Error()})
+		c.Abort()
+		return
+	}
+	
+	c.IndentedJSON(200, gin.H{"message": "reset link has been sent to your email. please check your email and reset your password"})	   
+}
+
+func (uc *UserController) ResetPassword(c *gin.Context){
+
+	ctx := c.Request.Context()
+	token := c.Query("token")
+
+	var user *domain.User
+	if err := c.ShouldBindJSON(&user); err != nil {
+		c.IndentedJSON(400, gin.H{"error": "invalid input format"})
+		c.Abort()
+		return
+	}
+
+	if user.Password == "" {
+		c.IndentedJSON(400, gin.H{"error": "please insert new password"})
+		c.Abort()
+		return
+	}
+
+
+	email, err := uc.userUsecase.VerifyCode(ctx, token)
+	if err != nil {
+		c.IndentedJSON(500, gin.H{"error": err.Error()})
+		c.Abort()
+		return
+	}
+
+	err = uc.userUsecase.ResetPassword(ctx, email, user.Password)
+	if err != nil {
+		c.IndentedJSON(500, gin.H{"error": err.Error()})
+		c.Abort()
+		return
+	}
+
+	c.IndentedJSON(200, gin.H{"message": "Password Reset Successful"})
+
+}
+
+
+func (uc *UserController) PromoteDemoteUser(c *gin.Context){
+
+	
+	ctx := c.Request.Context()
+
+	var promteDemote *domain.PromoteDemoteStruct
+	if err := c.ShouldBindJSON(&promteDemote); err != nil {
+		c.IndentedJSON(400, gin.H{"error": "invalid input format"})
+		c.Abort()
+		return
+	}
+
+	if promteDemote.UserID == "" {
+		c.IndentedJSON(400, gin.H{"error": "user Id required"})
+		c.Abort()
+		return
+	}
+
+	err := uc.userUsecase.PromoteDemote(ctx, promteDemote.UserID)
+	if err != nil {
+		c.IndentedJSON(500, gin.H{"error": err.Error()})
+		c.Abort()
+		return 
+	}
+
+	c.IndentedJSON(200, gin.H{"message": "Role has been updated successfully"}) 
 }
 
 

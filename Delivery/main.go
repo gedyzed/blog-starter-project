@@ -52,9 +52,11 @@ func main() {
 	blogCollection := db.Collection("blogs")
 	userCollection := db.Collection("users")
 	tokenCollection := db.Collection("tokens")
+	vtokenCollection := db.Collection("vtokens")
 
 	// Setup repo
 	tokenRepo := repository.NewMongoTokenRepository(tokenCollection)
+	vtokenRepo := repository.NewMongoVTokenRepository(vtokenCollection)
 	userRepo := repository.NewMongoUserRepo(userCollection)
 	blogRepo := repository.NewBlogRepository(blogCollection)
 
@@ -72,7 +74,7 @@ func main() {
 	)
 
     // Setup token Usecase
-	tokenUsecase := usecases.NewTokenUsecase(tokenRepo, tokenService, jwtService)
+	tokenUsecase := usecases.NewTokenUsecase(tokenRepo, vtokenRepo, tokenService, jwtService)
 
 	// Setup usecases
 	userUsecase := usecases.NewUserUsecase(userRepo, tokenUsecase, passService)

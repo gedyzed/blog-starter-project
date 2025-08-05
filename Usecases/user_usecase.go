@@ -3,8 +3,8 @@ package usecases
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
-	
 
 	domain "github.com/gedyzed/blog-starter-project/Domain"
 	repository "github.com/gedyzed/blog-starter-project/Repository"
@@ -26,6 +26,11 @@ var (
 	// General errors
 	ErrUnexpected   = errors.New("internal server error")
 	ErrUnauthorized = errors.New("unauthorized")
+	ErrUserNotFound = errors.New("user not found")
+	ErrUsernameAlreadyExists = errors.New("username already exists")
+	ErrEmailAlreadyExists = errors.New("email already exists")
+	ErrIncorrectUserID = errors.New("incorrect userID")
+	ErrWhileDecodingData = errors.New("error while decoding data") 
 )
 
 
@@ -62,8 +67,9 @@ func (u *UserUsecases) Login(ctx context.Context, user domain.User) (*domain.Tok
 	if data.Email != user.Email {
 		return nil, ErrInvalidCredential
 	}
-
-	token, err := u.tokenUsecase.GenerateTokens(ctx, data.ID)
+	
+	id := user.ID.Hex()
+	token, err := u.tokenUsecase.GenerateTokens(ctx, id)
 	if err != nil {
 		return nil, ErrUnexpected
 	}
@@ -116,41 +122,88 @@ func (u *UserUsecases) Register(ctx context.Context, user *domain.User) error {
 
 	// check if username exists
 	existing, err := u.userRepo.GetByUsername(ctx, user.Username)
-	if err != nil && err.Error() == "error while decoding data"{
-		return errors.New("internal server error")
+	if err != nil && errors.Is(err, ErrWhileDecodingData){
+		return ErrUnexpected
 	}
 
 	if existing != nil {
-		return errors.New("username already exists")
+		return ErrUsernameAlreadyExists
 	}
 
 	// check if email exists
 	existing, err = u.userRepo.GetByEmail(ctx, user.Email)
-		if err != nil && err.Error() == "error while decoding data"{
-		return errors.New("internal server error")
+		if err != nil && errors.Is(err, ErrWhileDecodingData) {
+		return ErrUnexpected
 	}
 
 	if existing != nil {
-		return errors.New("email already exists")
+		return ErrEmailAlreadyExists
 	}
 
 	// hash the user password
 	user.Password, err = u.passwordService.Hash(user.Password)
 	if err != nil {
-		return errors.New("internal server error")
+		return ErrUnexpected
 	}
 
 	// Add user to database 
 	return u.userRepo.Add(ctx, user)
 }
 
-func (u *UserUsecases) VerifyCode(ctx context.Context, userID string, vcode string) error {
-	return u.tokenUsecase.VerifyCode(ctx, userID, vcode)
+func (u *UserUsecases) VerifyCode(ctx context.Context,vcode string)(string, error) {
+	return u.tokenUsecase.VerifyCode(ctx, vcode)
 }
 
 func (u *UserUsecases) DeleteVCode(ctx context.Context, userID string) error {
 	return u.tokenUsecase.DeleteVCode(ctx, userID)
 }
 
+func (u *UserUsecases) ForgotPassword(ctx context.Context, email string)(error){
+
+	// check if a user already exist
+	existing, err := u.userRepo.GetByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(ErrUnexpected, err){
+			return ErrUnexpected
+		} 
+
+		return ErrUserNotFound	
+	}
+
+	fmt.Println(existing)
+	idStr := existing.ID.Hex()
+	fmt.Println(idStr)
+
+	return u.tokenUsecase.CreateSendVCode(ctx, email, Password_Reset) 
+}
+
+func (u *UserUsecases) ResetPassword(ctx context.Context, email string, password string) error {
+
+	password, err := u.passwordService.Hash(password)
+	if err != nil {
+		return ErrUnexpected
+	}
+
+	return u.userRepo.Update(ctx, "email", email, &domain.User{Password: password})
+} 
+
+func (u *UserUsecases) PromoteDemote(ctx context.Context, userID string) error {
+
+	
+		existing, err := u.userRepo.Get(ctx, userID)
+		if err != nil {
+			return ErrIncorrectUserID
+		}
+
+		user := &domain.User{}
+		if existing.Role == "admin"{
+			user.Role = "user"
+		} else {
+			user.Role = "admin"
+		}
+		
+		return u.userRepo.Update(ctx, "_id", userID, user)
+}
+ 
 
  
