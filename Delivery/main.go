@@ -10,12 +10,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"github.com/gedyzed/blog-starter-project/Delivery/Controllers"
-	"github.com/gedyzed/blog-starter-project/Delivery/Routers"
-	"github.com/gedyzed/blog-starter-project/Infrastructure"
+	controllers "github.com/gedyzed/blog-starter-project/Delivery/Controllers"
+	routers "github.com/gedyzed/blog-starter-project/Delivery/Routers"
+	infrastructure "github.com/gedyzed/blog-starter-project/Infrastructure"
 	"github.com/gedyzed/blog-starter-project/Infrastructure/config"
-	"github.com/gedyzed/blog-starter-project/Repository"
-	"github.com/gedyzed/blog-starter-project/Usecases"
+	repository "github.com/gedyzed/blog-starter-project/Repository"
+	usecases "github.com/gedyzed/blog-starter-project/Usecases"
 )
 
 func main() {
@@ -58,13 +58,11 @@ func main() {
 	tokenRepo := repository.NewMongoTokenRepository(tokenCollection)
 	userRepo := repository.NewMongoUserRepo(userCollection)
 	blogRepo := repository.NewBlogRepository(blogCollection)
-  commentRepo := repository.NewCommentRepository(commentCollection)
-
-
+	commentRepo := repository.NewCommentRepository(commentCollection)
 
 	// Setup services
 	passService := infrastructure.NewPasswordService()
-    tokenService := infrastructure.NewTokenServices()
+	tokenService := infrastructure.NewTokenServices()
 	jwtService := infrastructure.NewJWTTokenService(
 		tokenRepo,
 		conf.Auth.AccessTokenKey,
@@ -73,26 +71,25 @@ func main() {
 		60*(24*time.Hour), // 2 month
 	)
 
-    // Setup token Usecase
+	// Setup token Usecase
 	tokenUsecase := usecases.NewTokenUsecase(tokenRepo, tokenService, jwtService)
 
 	// Setup usecases
 	userUsecase := usecases.NewUserUsecase(userRepo, tokenUsecase, passService)
 	blogUsecase := usecases.NewBlogUsecase(blogRepo)
-  commentUsecase := usecases.NewCommentUsecase(commentRepo)
+	commentUsecase := usecases.NewCommentUsecase(commentRepo)
 
 	// Setup handlers
 	userHandler := controllers.NewUserController(userUsecase)
 	blogHandler := controllers.NewBlogHandler(blogUsecase)
-  commentHandler := controllers.NewCommentHandler(commentUsecase)
-  tokenHandler := controllers.NewTokenController(tokenUsecase)
-
+	commentHandler := controllers.NewCommentHandler(commentUsecase)
+	tokenHandler := controllers.NewTokenController(tokenUsecase)
 
 	r := gin.Default()
 
 	routers.RegisterBlogRoutes(r, blogHandler, commentHandler)
 	routers.RegisterUserRoutes(r, userHandler)
-  routers.RegisterTokenRoutes(r, tokenHandler)
+	routers.RegisterTokenRoutes(r, tokenHandler)
 
 	r.Run(":" + conf.Port)
 }
