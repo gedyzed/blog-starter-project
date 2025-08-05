@@ -7,7 +7,9 @@ type BlogUsecase interface {
 	GetBlogByID(ctx context.Context, id string) (*Blog, error)
 	CreateBlog(ctx context.Context, blog Blog) (*Blog, error)
 	UpdateBlog(ctx context.Context, id string, userID string, updatedBlog BlogUpdateInput) error
-	DeleteBlog(ctx context.Context, id string, userID string) error
+	DeleteBlog(ctx context.Context, id string, userID string, role string) error
+	LikeBlog(ctx context.Context, blogID string, userID string) error
+	DislikeBlog(ctx context.Context, blogID string, userID string) error
 }
 type CommentUsecase interface{
    CreateComment(ctx context.Context, blogID string, userID string, message string) (*Comment, error)

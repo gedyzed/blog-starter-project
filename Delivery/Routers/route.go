@@ -3,28 +3,30 @@ package routers
 import (
 	"github.com/gin-gonic/gin"
 
-	"github.com/gedyzed/blog-starter-project/Delivery/Controllers"
-
+	controllers "github.com/gedyzed/blog-starter-project/Delivery/Controllers"
 )
 
-
-func RegisterBlogRoutes(r *gin.Engine, blogHandler *controllers.BlogHandler, commentHandler *controllers.CommentHandler){
+func RegisterBlogRoutes(r *gin.Engine, blogHandler *controllers.BlogHandler, commentHandler *controllers.CommentHandler) {
 	blog := r.Group("/blogs")
 	{
-		blog.POST("/", blogHandler.CreateBlog)         
-		blog.GET("/", blogHandler.GetAllBlogs)        
-		blog.GET("/:id", blogHandler.GetBlogById)      
-		blog.PUT("/:id", blogHandler.UpdateBlog)   
-		blog.DELETE("/:id", blogHandler.DeleteBlog)    
-	}
-	// Comment Routes
-	r.POST("/comments/:blogId", commentHandler.CreateComment)
-	r.GET("/comments/:blogId", commentHandler.GetAllComments)
-	r.GET("/comments/:blogId/:id", commentHandler.GetCommentByID)
-	r.PUT("/comments/:blogId/:id", commentHandler.EditComment)
-	r.DELETE("/comments/:blogId/:id", commentHandler.DeleteComment)
-}
+		blog.POST("/", blogHandler.CreateBlog)
+		blog.GET("/", blogHandler.GetAllBlogs)
+		blog.GET("/:id", blogHandler.GetBlogById)
+		blog.PUT("/:id", blogHandler.UpdateBlog)
+		blog.DELETE("/:id", blogHandler.DeleteBlog)
+		blog.POST("/:id/like", blogHandler.LikeBlog)
+		blog.POST("/:id/dislike", blogHandler.DislikeBlog)
 
+	}
+	comments := r.Group("/comments")
+	{
+		comments.POST("/:blogId", commentHandler.CreateComment)
+		comments.GET("/:blogId", commentHandler.GetAllComments)
+		comments.GET("/:blogId/:id", commentHandler.GetCommentByID)
+		comments.PUT("/:blogId/:id", commentHandler.EditComment)
+		comments.DELETE("/:blogId/:id", commentHandler.DeleteComment)
+	}
+}
 
 func RegisterUserRoutes(r *gin.Engine, handler *controllers.UserController) {
 
@@ -36,7 +38,7 @@ func RegisterUserRoutes(r *gin.Engine, handler *controllers.UserController) {
 	}
 }
 
-func RegisterTokenRoutes(r *gin.Engine, handler *controllers.TokenController){
+func RegisterTokenRoutes(r *gin.Engine, handler *controllers.TokenController) {
 
 	tokens := r.Group("/tokens/")
 
@@ -44,12 +46,3 @@ func RegisterTokenRoutes(r *gin.Engine, handler *controllers.TokenController){
 		tokens.POST("/send-vcode", handler.SendVerificationEmail) // send verification email
 	}
 }
-
-
-
-
-
-
-
-
-
