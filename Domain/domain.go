@@ -31,7 +31,7 @@ type ContactInformation struct {
 
 type Profile struct {
 	Bio                string             `json:"bio" bson:"bio"`
-	ContactInformation ContactInformation  `json:"contact_information" bson:"contact_information"`
+	ContactInformation ContactInformation `json:"contact_information" bson:"contact_information"`
 	ProfilePicture     string             `json:"profile_picture" bson:"profile_picture"`
 	CreatedAt          time.Time          `json:"created_at" bson:"created_at"`
 	UpdatedAt          time.Time          `json:"updated_at" bson:"updated_at"`
@@ -39,23 +39,28 @@ type Profile struct {
 
 // Blog represents a blog post
 type Blog struct {
-	ID        primitive.ObjectID `json:"id" bson:"_id,omitempty"` // uses MongoDB's native ObjectID
-	UserID    primitive.ObjectID `json:"user_id" bson:"user_id"`
-	Title     string             `json:"title" bson:"title"`
-	Content   string             `json:"content" bson:"content"`
-	Created   time.Time          `json:"created" bson:"created"`
-	Updated   time.Time          `json:"updated" bson:"updated"`
-	ViewCount int                `json:"view_count" bson:"view_count"`
-	Tags      []string           `json:"tags" bson:"tags"`
+	ID            primitive.ObjectID `json:"id" bson:"_id,omitempty"` // uses MongoDB's native ObjectID
+	UserID        primitive.ObjectID `json:"user_id" bson:"user_id"`
+	Title         string             `json:"title" bson:"title"`
+	Content       string             `json:"content" bson:"content"`
+	Created       time.Time          `json:"created" bson:"created"`
+	Updated       time.Time          `json:"updated" bson:"updated"`
+	ViewCount     int                `json:"view_count" bson:"view_count"`
+	Tags          []string           `json:"tags" bson:"tags"`
+	Likes         int                `json:"likes" bson:"likes"`
+	Dislikes      int                `json:"dislikes" bson:"dislikes"`
+	LikedUsers    []string           `json:"liked_users" bson:"liked_users"`
+	DislikedUsers []string           `json:"disliked_users" bson:"disliked_users"`
 }
 
 // Comment represents a comment on a blog post
 type Comment struct {
-	ID      string    `json:"id" bson:"comment_id"`
-	BlogID  string    `json:"blog_id" bson:"blog_id"`
-	UserID  string    `json:"user_id" bson:"user_id"` // Commentor's ID
-	Message string    `json:"message" bson:"message"`
-	Created time.Time `json:"created" bson:"created"`
+    ID      primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+    BlogID  primitive.ObjectID `json:"blog_id" bson:"blog_id"`
+    UserID  primitive.ObjectID `json:"user_id" bson:"user_id"`
+    Message string             `json:"message" bson:"message"`
+    Created time.Time          `json:"created" bson:"created"`
+	Updated time.Time 		   `json:"updated_at" bson:"updated_at"`
 }
 
 // Token represents authentication tokens
@@ -97,11 +102,10 @@ type AISuggestion struct {
 	CreatedAt  time.Time `json:"created_at" bson:"created_at"`
 }
 
-
 type VToken struct {
-	UserID string `json:"user_id" bson:"user_id"`
-	TokenType string `json:"token_type" bson:"token_type"`
-	Token string `json:"-" bson:"token"`
+	UserID    string    `json:"user_id" bson:"user_id"`
+	TokenType string    `json:"token_type" bson:"token_type"`
+	Token     string    `json:"-" bson:"token"`
 	ExpiresAt time.Time `json:"expires_at" bson:"expires_at"`
 }
 

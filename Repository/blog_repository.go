@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
 	domain "github.com/gedyzed/blog-starter-project/Domain"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -117,16 +118,13 @@ func (r *blogRepository) UpdateBlog(ctx context.Context, id string, userID strin
 	return nil
 }
 
-func (r *blogRepository) DeleteBlog(ctx context.Context, id string, userID string) error {
+func (r *blogRepository) DeleteBlog(ctx context.Context, id string) error {
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return err
 	}
-	userObjID, err := primitive.ObjectIDFromHex(userID)
-	if err != nil {
-		return err
-	}
-	res, err := r.collection.DeleteOne(ctx, bson.M{"_id": objID, "user_id": userObjID})
+
+	res, err := r.collection.DeleteOne(ctx, bson.M{"_id": objID})
 	if err != nil {
 		return err
 	}
@@ -134,4 +132,98 @@ func (r *blogRepository) DeleteBlog(ctx context.Context, id string, userID strin
 		return errors.New("no blog found")
 	}
 	return nil
+}
+
+func (r *blogRepository) LikeBlog(ctx context.Context, id string, userID string) error {
+	blogID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+
+	filter := bson.M{"_id": blogID, "liked_users": userID}
+	exists := r.collection.FindOne(ctx, filter)
+	if exists.Err() == nil {
+		_, err := r.collection.UpdateOne(
+			ctx,
+			bson.M{"_id": blogID},
+			bson.M{
+				"$pull": bson.M{"liked_users": userID},
+				"$inc":  bson.M{"like_count": -1},
+			},
+		)
+		return err
+	}
+	filter = bson.M{"_id": blogID, "disliked_users": userID}
+	exists = r.collection.FindOne(ctx, filter)
+	if exists.Err() == nil {
+		_, err := r.collection.UpdateOne(
+			ctx,
+			bson.M{"_id": blogID},
+			bson.M{
+				"$pull": bson.M{"disliked_users": userID},
+				"$inc":  bson.M{"dislike_count": -1},
+			},
+		)
+		if err != nil {
+			return err
+		}
+
+	}
+
+	_, err = r.collection.UpdateOne(
+		ctx,
+		bson.M{"_id": blogID},
+		bson.M{
+			"$addToSet": bson.M{"liked_users": userID},
+			"$inc":      bson.M{"like_count": 1},
+		},
+	)
+	return err
+}
+
+func (r *blogRepository) DislikeBlog(ctx context.Context, id string, userID string) error {
+	blogID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+
+	filter := bson.M{"_id": blogID, "disliked_users": userID}
+	exists := r.collection.FindOne(ctx, filter)
+	if exists.Err() == nil {
+		_, err := r.collection.UpdateOne(
+			ctx,
+			bson.M{"_id": blogID},
+			bson.M{
+				"$pull": bson.M{"disliked_users": userID},
+				"$inc":  bson.M{"dislike_count": -1},
+			},
+		)
+		return err
+	}
+	filter = bson.M{"_id": blogID, "liked_users": userID}
+	exists = r.collection.FindOne(ctx, filter)
+	if exists.Err() == nil {
+		_, err := r.collection.UpdateOne(
+			ctx,
+			bson.M{"_id": blogID},
+			bson.M{
+				"$pull": bson.M{"liked_users": userID},
+				"$inc":  bson.M{"like_count": -1},
+			},
+		)
+		if err != nil {
+			return err
+		}
+
+	}
+
+	_, err = r.collection.UpdateOne(
+		ctx,
+		bson.M{"_id": blogID},
+		bson.M{
+			"$addToSet": bson.M{"disliked_users": userID},
+			"$inc":      bson.M{"dislike_count": 1},
+		},
+	)
+	return err
 }
