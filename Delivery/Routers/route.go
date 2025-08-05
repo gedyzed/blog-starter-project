@@ -14,8 +14,8 @@ func RegisterBlogRoutes(r *gin.Engine, blogHandler *controllers.BlogHandler, com
 		blog.GET("/:id", blogHandler.GetBlogById)
 		blog.PUT("/:id", blogHandler.UpdateBlog)
 		blog.DELETE("/:id", blogHandler.DeleteBlog)
-		blog.PUT("/:id/like", blogHandler.LikeBlog)
-		blog.PUT("/:id/dislike", blogHandler.DislikeBlog)
+		blog.POST("/:id/like", blogHandler.LikeBlog)
+		blog.POST("/:id/dislike", blogHandler.DislikeBlog)
 
 	}
 	comments := r.Group("/comments")
