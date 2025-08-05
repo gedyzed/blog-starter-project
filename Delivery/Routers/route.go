@@ -8,16 +8,23 @@ import (
 )
 
 
-func RegisterBlogRoutes(r *gin.Engine, handler *controllers.BlogHandler) {
+func RegisterBlogRoutes(r *gin.Engine, blogHandler *controllers.BlogHandler, commentHandler *controllers.CommentHandler){
 	blog := r.Group("/blogs")
 	{
-		blog.POST("/", handler.CreateBlog)
-		blog.GET("/", handler.GetAllBlogs)
-		blog.GET("/:id", handler.GetBlogById)
-		blog.PUT("/:id", handler.UpdateBlog)
-		blog.DELETE("/:id", handler.DeleteBlog)
+		blog.POST("/", blogHandler.CreateBlog)         
+		blog.GET("/", blogHandler.GetAllBlogs)        
+		blog.GET("/:id", blogHandler.GetBlogById)      
+		blog.PUT("/:id", blogHandler.UpdateBlog)   
+		blog.DELETE("/:id", blogHandler.DeleteBlog)    
 	}
+	// Comment Routes
+	r.POST("/comments/:blogId", commentHandler.CreateComment)
+	r.GET("/comments/:blogId", commentHandler.GetAllComments)
+	r.GET("/comments/:blogId/:id", commentHandler.GetCommentByID)
+	r.PUT("/comments/:blogId/:id", commentHandler.EditComment)
+	r.DELETE("/comments/:blogId/:id", commentHandler.DeleteComment)
 }
+
 
 func RegisterUserRoutes(r *gin.Engine, handler *controllers.UserController) {
 
@@ -37,6 +44,7 @@ func RegisterTokenRoutes(r *gin.Engine, handler *controllers.TokenController){
 		tokens.POST("/send-vcode", handler.SendVerificationEmail) // send verification email
 	}
 }
+
 
 
 

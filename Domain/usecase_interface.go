@@ -9,3 +9,11 @@ type BlogUsecase interface {
 	UpdateBlog(ctx context.Context, id string, userID string, updatedBlog BlogUpdateInput) error
 	DeleteBlog(ctx context.Context, id string, userID string) error
 }
+type CommentUsecase interface{
+   CreateComment(ctx context.Context, blogID string, userID string, message string) (*Comment, error)
+   GetAllComments(ctx context.Context, blogID string, page int, limit int, sort string) ([]Comment, int, error)
+   GetCommentByID(ctx context.Context, blogID string, commentID string) (*Comment, error)
+   EditComment(ctx context.Context, blogID string, commentID string, userID string, message string) error 
+   DeleteComment(ctx context.Context, blogID string, commentID string, userID string) error
+}
+

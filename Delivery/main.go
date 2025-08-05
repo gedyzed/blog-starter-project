@@ -50,6 +50,7 @@ func main() {
 
 	// setup collections
 	blogCollection := db.Collection("blogs")
+	commentCollection := db.Collection("comments")
 	userCollection := db.Collection("users")
 	tokenCollection := db.Collection("tokens")
 
@@ -57,6 +58,7 @@ func main() {
 	tokenRepo := repository.NewMongoTokenRepository(tokenCollection)
 	userRepo := repository.NewMongoUserRepo(userCollection)
 	blogRepo := repository.NewBlogRepository(blogCollection)
+  commentRepo := repository.NewCommentRepository(commentCollection)
 
 
 
@@ -77,18 +79,20 @@ func main() {
 	// Setup usecases
 	userUsecase := usecases.NewUserUsecase(userRepo, tokenUsecase, passService)
 	blogUsecase := usecases.NewBlogUsecase(blogRepo)
+  commentUsecase := usecases.NewCommentUsecase(commentRepo)
 
 	// Setup handlers
 	userHandler := controllers.NewUserController(userUsecase)
 	blogHandler := controllers.NewBlogHandler(blogUsecase)
-    tokenHandler := controllers.NewTokenController(tokenUsecase)
+  commentHandler := controllers.NewCommentHandler(commentUsecase)
+  tokenHandler := controllers.NewTokenController(tokenUsecase)
 
 
 	r := gin.Default()
 
-	routers.RegisterBlogRoutes(r, blogHandler)
+	routers.RegisterBlogRoutes(r, blogHandler, commentHandler)
 	routers.RegisterUserRoutes(r, userHandler)
-    routers.RegisterTokenRoutes(r, tokenHandler)
+  routers.RegisterTokenRoutes(r, tokenHandler)
 
 	r.Run(":" + conf.Port)
 }

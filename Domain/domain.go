@@ -63,11 +63,12 @@ type Blog struct {
 
 // Comment represents a comment on a blog post
 type Comment struct {
-	ID      string    `json:"id" bson:"comment_id"`
-	BlogID  string    `json:"blog_id" bson:"blog_id"`
-	UserID  string    `json:"user_id" bson:"user_id"` // Commentor's ID
-	Message string    `json:"message" bson:"message"`
-	Created time.Time `json:"created" bson:"created"`
+    ID      primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+    BlogID  primitive.ObjectID `json:"blog_id" bson:"blog_id"`
+    UserID  primitive.ObjectID `json:"user_id" bson:"user_id"`
+    Message string             `json:"message" bson:"message"`
+    Created time.Time          `json:"created" bson:"created"`
+	Updated time.Time 		   `json:"updated_at" bson:"updated_at"`
 }
 
 // Token represents authentication tokens
