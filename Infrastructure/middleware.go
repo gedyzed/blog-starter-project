@@ -9,7 +9,7 @@ import (
 )
 
 type AuthMiddleware struct {
-	tokenService domain.IJWTService
+	tokenService domain.ITokenService
 }
 
 func (m *AuthMiddleware) IsLogin(c *gin.Context) {
