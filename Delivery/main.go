@@ -30,7 +30,7 @@ func main() {
 	opts := options.Client().ApplyURI(conf.Mongo.URL).SetServerAPIOptions(serverAPI)
 
 	// 2) Connect to MongoDB Atlas
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	client, err := mongo.Connect(ctx, opts)
@@ -58,8 +58,14 @@ func main() {
 	tokenRepo := repository.NewMongoTokenRepository(tokenCollection)
 	userRepo := repository.NewMongoUserRepo(userCollection)
 	blogRepo := repository.NewBlogRepository(blogCollection)
-	commentRepo := repository.NewCommentRepository(commentCollection)
+	commentRepo := repository.NewCommentRepository(commentCollection, blogCollection)
 
+	//to initialize the indexes
+	if err := blogRepo.EnsureIndexes(context.Background()); err != nil {
+		log.Fatalf("Failed to create indexes: %v", err)
+	}
+
+	dispatcher := infrastructure.NewBlogQueue()
 	// Setup services
 	passService := infrastructure.NewPasswordService()
 	tokenService := infrastructure.NewTokenServices()
@@ -76,14 +82,16 @@ func main() {
 
 	// Setup usecases
 	userUsecase := usecases.NewUserUsecase(userRepo, tokenUsecase, passService)
-	blogUsecase := usecases.NewBlogUsecase(blogRepo)
-	commentUsecase := usecases.NewCommentUsecase(commentRepo)
+	blogUsecase := usecases.NewBlogUsecase(blogRepo, commentRepo,dispatcher)
+	commentUsecase := usecases.NewCommentUsecase(commentRepo,dispatcher)
 
 	// Setup handlers
 	userHandler := controllers.NewUserController(userUsecase)
 	blogHandler := controllers.NewBlogHandler(blogUsecase)
 	commentHandler := controllers.NewCommentHandler(commentUsecase)
 	tokenHandler := controllers.NewTokenController(tokenUsecase)
+
+	infrastructure.StartBlogRefreshWorker(ctx, blogUsecase)
 
 	r := gin.Default()
 

@@ -22,6 +22,7 @@ func (h *CommentHandler) CreateComment(c *gin.Context) {
 
 	blogID := c.Param("blogId")
 	userID := c.MustGet("userID").(string)
+	// userID := "688c9c31d56e61e7bb2e1be8"
 
 	var input struct {
 		Message string `json:"message" binding:"required"`
@@ -96,6 +97,7 @@ func (h *CommentHandler) EditComment(c *gin.Context) {
 	blogID := c.Param("blogId") 
 	commentID := c.Param("id")
 	userID := c.MustGet("userID").(string)
+	// userID := "688c9c31d56e61e7bb2e1be8"
 
 	var input struct {
 		Message string `json:"message" binding:"required"`

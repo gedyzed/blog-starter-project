@@ -107,7 +107,7 @@ func (h *BlogHandler) GetBlogById(c *gin.Context) {
 	ctx := c.Request.Context()
 	blogID := c.Param("id")
 
-	blog, err := h.blogUsecase.GetBlogByID(ctx, blogID)
+	blog, err := h.blogUsecase.ViewBlog(ctx, blogID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
