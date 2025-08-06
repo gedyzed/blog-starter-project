@@ -11,10 +11,14 @@ import (
 
 type commentUsecase struct {
 	commentRepo domain.CommentRepository
+	dispatcher   domain.BlogRefreshDispatcher
 }
 
-func NewCommentUsecase(Repo domain.CommentRepository) *commentUsecase {
-	return &commentUsecase{commentRepo: Repo}
+func NewCommentUsecase(repo domain.CommentRepository, dispatcher domain.BlogRefreshDispatcher) *commentUsecase {
+    return &commentUsecase{
+        commentRepo: repo,
+        dispatcher:  dispatcher,
+    }
 }
 
 func (uc *commentUsecase) CreateComment(ctx context.Context, blogID string, userID string, message string) (*domain.Comment, error) {
@@ -24,13 +28,13 @@ func (uc *commentUsecase) CreateComment(ctx context.Context, blogID string, user
 	if len(message) > 500 {
 		return nil, errors.New("message is too long (max 500 chars)")
 	}
-
+	
 	comment := domain.Comment{
 		Message: message,
 		Created: time.Now(),
 		Updated: time.Now(),
 	}
-
+	uc.dispatcher.Enqueue(blogID)
 	return uc.commentRepo.CreateComment(ctx, blogID, userID, comment)
 }
 
@@ -66,5 +70,6 @@ func (uc *commentUsecase) EditComment(ctx context.Context, blogID string, commen
 }
 
 func (uc *commentUsecase) DeleteComment(ctx context.Context, blogID string, commentID string, userID string) error {
+	uc.dispatcher.Enqueue(blogID)
 	return uc.commentRepo.DeleteComment(ctx, blogID, commentID, userID)
 }

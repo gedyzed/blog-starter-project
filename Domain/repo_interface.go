@@ -11,6 +11,8 @@ type BlogRepository interface {
 	DeleteBlog(ctx context.Context, id string) error
 	LikeBlog(ctx context.Context, blogID string, userID string) error
 	DislikeBlog(ctx context.Context, blogID string, userID string) error
+	EnsureIndexes(ctx context.Context) error
+	UpdateStats(ctx context.Context, blogID string, score float64, commentCount int) error
 }
 
 type CommentRepository interface {
@@ -19,6 +21,7 @@ type CommentRepository interface {
 	GetCommentByID(ctx context.Context, blogID string, id string) (*Comment, error)
 	EditComment(ctx context.Context, blogID string, id string, userID string, message string) error
 	DeleteComment(ctx context.Context, blogID string, id string, userID string) error
+	CountCommentsByBlogID(ctx context.Context, id string) (int, error)
 }
 
 

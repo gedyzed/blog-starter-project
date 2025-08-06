@@ -51,6 +51,8 @@ type Blog struct {
 	Dislikes      int                `json:"dislikes" bson:"dislikes"`
 	LikedUsers    []string           `json:"liked_users" bson:"liked_users"`
 	DislikedUsers []string           `json:"disliked_users" bson:"disliked_users"`
+	CommentsCount   int              `json:"comments_count" bson:"comments_count"`           
+    PopularityScore float64          `json:"popularity_score" bson:"popularity_score"`
 }
 
 // Comment represents a comment on a blog post
