@@ -10,16 +10,16 @@ import (
 )
 
 type blogUsecase struct {
-	blogRepo domain.BlogRepository
+	blogRepo    domain.BlogRepository
 	commentRepo domain.CommentRepository
-	dispatcher   domain.BlogRefreshDispatcher
+	dispatcher  domain.BlogRefreshDispatcher
 }
 
-func NewBlogUsecase(repo domain.BlogRepository, commentRepo domain.CommentRepository,dispatcher domain.BlogRefreshDispatcher) domain.BlogUsecase {
+func NewBlogUsecase(repo domain.BlogRepository, commentRepo domain.CommentRepository, dispatcher domain.BlogRefreshDispatcher) domain.BlogUsecase {
 	return &blogUsecase{
-		blogRepo: repo,
+		blogRepo:    repo,
 		commentRepo: commentRepo,
-		dispatcher : dispatcher,
+		dispatcher:  dispatcher,
 	}
 }
 
@@ -89,7 +89,7 @@ func (uc *blogUsecase) LikeBlog(ctx context.Context, blogID string, userID strin
 	if err != nil {
 		return fmt.Errorf("failed to like: %w", err)
 	}
-	uc.dispatcher.Enqueue(blogID) 
+	uc.dispatcher.Enqueue(blogID)
 	return nil
 }
 
@@ -104,26 +104,38 @@ func (uc *blogUsecase) DislikeBlog(ctx context.Context, blogID string, userID st
 	if err != nil {
 		return fmt.Errorf("failed to dislike: %w", err)
 	}
-	uc.dispatcher.Enqueue(blogID) 
+	uc.dispatcher.Enqueue(blogID)
 	return nil
 }
 
-func(uc *blogUsecase) RefreshPopularity(ctx context.Context, blogID string) error{
-	blog,err := uc.blogRepo.GetBlogByID(ctx, blogID)
-	if err != nil{
+func (uc *blogUsecase) RefreshPopularity(ctx context.Context, blogID string) error {
+	blog, err := uc.blogRepo.GetBlogByID(ctx, blogID)
+	if err != nil {
 		return fmt.Errorf("failed to fetch blog: %w", err)
 	}
 
 	counts, err := uc.commentRepo.CountCommentsByBlogID(ctx, blogID)
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 
 	score := CalculateScore(blog.ViewCount, blog.Likes, blog.Dislikes, counts)
 	return uc.blogRepo.UpdateStats(ctx, blogID, score, counts)
 }
 
-
 func CalculateScore(views, likes, dislikes, comments int) float64 {
-    return float64(views)*0.5 + float64(likes)*2 - float64(dislikes)*1 + float64(comments)*1.5
+	return float64(views)*0.5 + float64(likes)*2 - float64(dislikes)*1 + float64(comments)*1.5
+}
+
+func (uc *blogUsecase) SearchBlogs(ctx context.Context, query string, page int) ([]domain.Blog, error) {
+	if page < 1 {
+		page = 1
+	}
+	const limit = 10
+
+	blogs, err := uc.blogRepo.SearchBlogs(ctx, query, limit, page)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search blogs: %w", err)
+	}
+	return blogs, nil
 }

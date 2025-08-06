@@ -181,3 +181,31 @@ func (h *BlogHandler) DislikeBlog(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "blog disliked successfully"})
 
 }
+
+func (h *BlogHandler) SearchBlogs(c *gin.Context) {
+	ctx := c.Request.Context()
+	query := c.Query("query")
+	if query == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "query parameter is required"})
+		return
+	}
+
+	pageStr := c.DefaultQuery("page", "1")
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "page must be a positive integer"})
+		return
+	}
+
+	blogs, err := h.blogUsecase.SearchBlogs(ctx, query, page)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"query": query,
+		"page":  page,
+		"blogs": blogs,
+	})
+}

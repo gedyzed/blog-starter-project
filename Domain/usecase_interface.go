@@ -11,15 +11,16 @@ type BlogUsecase interface {
 	LikeBlog(ctx context.Context, blogID string, userID string) error
 	DislikeBlog(ctx context.Context, blogID string, userID string) error
 	RefreshPopularity(ctx context.Context, blogID string) error
+	SearchBlogs(ctx context.Context, keyword string, page int) ([]Blog, error)
 }
-type CommentUsecase interface{
-   CreateComment(ctx context.Context, blogID string, userID string, message string) (*Comment, error)
-   GetAllComments(ctx context.Context, blogID string, page int, limit int, sort string) ([]Comment, int, error)
-   GetCommentByID(ctx context.Context, blogID string, commentID string) (*Comment, error)
-   EditComment(ctx context.Context, blogID string, commentID string, userID string, message string) error 
-   DeleteComment(ctx context.Context, blogID string, commentID string, userID string) error
+type CommentUsecase interface {
+	CreateComment(ctx context.Context, blogID string, userID string, message string) (*Comment, error)
+	GetAllComments(ctx context.Context, blogID string, page int, limit int, sort string) ([]Comment, int, error)
+	GetCommentByID(ctx context.Context, blogID string, commentID string) (*Comment, error)
+	EditComment(ctx context.Context, blogID string, commentID string, userID string, message string) error
+	DeleteComment(ctx context.Context, blogID string, commentID string, userID string) error
 }
 
 type BlogRefreshDispatcher interface {
-    Enqueue(blogID string)
+	Enqueue(blogID string)
 }
