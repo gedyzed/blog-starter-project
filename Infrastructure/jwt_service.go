@@ -2,16 +2,10 @@ package infrastructure
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/gedyzed/blog-starter-project/Domain"
 	"github.com/golang-jwt/jwt/v5"
-)
-
-var (
-	ErrInvalidToken        = errors.New("invalid token")
-	ErrInvalidRefreshToken = errors.New("invalid refresh token")
 )
 
 type JWTTokenService struct {
@@ -49,14 +43,14 @@ func (s *JWTTokenService) verifyJWT(tokenString string, key []byte) (string, err
 	})
 
 	if err != nil {
-		return "", ErrInvalidToken
+		return "", domain.ErrInvalidToken
 	}
 
 	if claims, ok := token.Claims.(*jwt.RegisteredClaims); ok && token.Valid {
 		return claims.Subject, nil
 	}
 
-	return "", ErrInvalidToken
+	return "", domain.ErrInvalidToken
 }
 
 func (s *JWTTokenService) GenerateTokens(ctx context.Context, userID string) (*domain.Token, error) {
@@ -88,21 +82,21 @@ func (s *JWTTokenService) GenerateTokens(ctx context.Context, userID string) (*d
 func (s *JWTTokenService) RefreshTokens(ctx context.Context, refreshToken string) (*domain.Token, error) {
 	userID, err := s.verifyJWT(refreshToken, s.refreshKey)
 	if err != nil {
-		return nil, ErrInvalidRefreshToken
+		return nil, domain.ErrInvalidRefreshToken
 	}
 
 	tokens, err := s.repo.FindByUserID(ctx, userID)
 	if err != nil {
-		return nil, ErrInvalidRefreshToken
+		return nil, domain.ErrInvalidRefreshToken
 	}
 
 	if tokens.RefreshToken != refreshToken {
-		return nil, ErrInvalidRefreshToken
+		return nil, domain.ErrInvalidRefreshToken
 	}
 
 	if tokens.RefreshExpiry.Before(time.Now()) {
 		_ = s.repo.DeleteByUserID(ctx, userID)
-		return nil, ErrInvalidRefreshToken
+		return nil, domain.ErrInvalidRefreshToken
 	}
 
 	return s.GenerateTokens(ctx, userID)
