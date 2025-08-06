@@ -1,14 +1,8 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"log"
 	"time"
-
-	"github.com/gin-gonic/gin"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 
 	controllers "github.com/gedyzed/blog-starter-project/Delivery/Controllers"
 	routers "github.com/gedyzed/blog-starter-project/Delivery/Routers"
@@ -16,46 +10,33 @@ import (
 	"github.com/gedyzed/blog-starter-project/Infrastructure/config"
 	repository "github.com/gedyzed/blog-starter-project/Repository"
 	usecases "github.com/gedyzed/blog-starter-project/Usecases"
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
+
 	conf, err := config.LoadConfig()
+	
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	// 1) Configure the ServerAPI (required for Atlas)
-	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
-	opts := options.Client().ApplyURI(conf.Mongo.URL).SetServerAPIOptions(serverAPI)
+	db := infrastructure.DbInit(conf.Mongo.URL)
 
-	// 2) Connect to MongoDB Atlas
-	ctx, cancel := context.WithCancel(context.Background())
+
+  ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	client, err := mongo.Connect(ctx, opts)
-	if err != nil {
-		log.Fatalf("MongoDB connection error: %v", err)
-	}
-
-	// 3) Ping to verify connection
-	if err := client.Ping(ctx, nil); err != nil {
-		log.Fatalf("MongoDB ping failed: %v", err)
-	}
-
-	log.Println("✅ Successfully connected to MongoDB Atlas")
-
-	// 4) Return the reference to your database
-	db := client.Database("BlogDB") // Change if your database name is different
-
 	// setup collections
 	blogCollection := db.Collection("blogs")
 	commentCollection := db.Collection("comments")
 	userCollection := db.Collection("users")
 	tokenCollection := db.Collection("tokens")
+	vtokenCollection := db.Collection("vtokens")
 
 	// Setup repo
 	tokenRepo := repository.NewMongoTokenRepository(tokenCollection)
+	vtokenRepo := repository.NewMongoVTokenRepository(vtokenCollection)
 	userRepo := repository.NewMongoUserRepo(userCollection)
 	blogRepo := repository.NewBlogRepository(blogCollection)
 	commentRepo := repository.NewCommentRepository(commentCollection, blogCollection)
@@ -68,7 +49,7 @@ func main() {
 	dispatcher := infrastructure.NewBlogQueue()
 	// Setup services
 	passService := infrastructure.NewPasswordService()
-	tokenService := infrastructure.NewTokenServices()
+	tokenService := infrastructure.NewTokenService(conf.Email, conf.App.URL)
 	jwtService := infrastructure.NewJWTTokenService(
 		tokenRepo,
 		conf.Auth.AccessTokenKey,
@@ -77,13 +58,13 @@ func main() {
 		60*(24*time.Hour), // 2 month
 	)
 
-	// Setup token Usecase
-	tokenUsecase := usecases.NewTokenUsecase(tokenRepo, tokenService, jwtService)
-
 	// Setup usecases
+	tokenUsecase := usecases.NewTokenUsecase(tokenRepo, vtokenRepo, tokenService, jwtService)
 	userUsecase := usecases.NewUserUsecase(userRepo, tokenUsecase, passService)
+
 	blogUsecase := usecases.NewBlogUsecase(blogRepo, commentRepo,dispatcher)
 	commentUsecase := usecases.NewCommentUsecase(commentRepo,dispatcher)
+
 
 	// Setup handlers
 	userHandler := controllers.NewUserController(userUsecase)

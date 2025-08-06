@@ -1,36 +1,27 @@
 package domain
 
 import (
-	"context"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type IUserRepository interface {
-	Add(ctx context.Context, user *User) error
-	Update(ctx context.Context, id string, user *User) error
-	Delete(ctx context.Context, id string) error
-	Get(ctx context.Context, id string) (*User, error)
-	GetByEmail(ctx context.Context, email string) (*User, error)
-	GetByUsername(ctx context.Context, username string) (*User, error)
-}
 
 // User represents a user in the system
 type User struct {
-	ID        string    `json:"id" bson:"_id"`
-	Firstname string    `json:"firstname" bson:"firstname"`
-	Lastname  string    `json:"lastname" bson:"lastname"`
-	Username  string    `json:"username" bson:"username"`
-	Email     string    `json:"email" bson:"email"`
-	VCode     string    `json:"vcode" bson:"-"`
-	Role      string    `json:"role" bson:"role"`
-	Password  string    `json:"password" bson:"password"`
-	CreatedAt time.Time `json:"created_at" bson:"created_at"`
-	UpdatedAt time.Time `json:"updated_at" bson:"updated_at"`
-
-	// ← embed Profile here
-	Profile Profile `json:"profile" bson:"profile"`
+	ID        primitive.ObjectID  `json:"id" bson:"_id"`
+    Firstname string             `json:"firstname" bson:"firstname"`
+    Lastname  string             `json:"lastname" bson:"lastname"`
+    Username  string             `json:"username" bson:"username"`
+    Email     string             `json:"email" bson:"email"`
+    VCode     string             `json:"vcode" bson:"-"`
+    Role      string             `json:"role" bson:"role"`
+    Password  string             `json:"password" bson:"password"`
+    CreatedAt time.Time          `json:"created_at" bson:"created_at"`
+    UpdatedAt time.Time          `json:"updated_at" bson:"updated_at"`
+	
+    // ← embed Profile here
+    Profile Profile `json:"profile" bson:"profile"`
 }
 
 type ContactInformation struct {
@@ -39,7 +30,6 @@ type ContactInformation struct {
 }
 
 type Profile struct {
-	ID                 primitive.ObjectID `json:"id" bson:"_id"`
 	Bio                string             `json:"bio" bson:"bio"`
 	ContactInformation ContactInformation `json:"contact_information" bson:"contact_information"`
 	ProfilePicture     string             `json:"profile_picture" bson:"profile_picture"`
@@ -125,29 +115,6 @@ type EmailRequest struct {
 	Email string `json:"email"`
 }
 
-type ITokenRepo interface {
-	CreateVCode(ctx context.Context, token *VToken) error
-	DeleteVCode(ctx context.Context, id string) error
-	GetVCode(ctx context.Context, id string) (*VToken, error)
-	Save(ctx context.Context, tokens Token) error
-	FindByUserID(ctx context.Context, userID string) (*Token, error)
-	DeleteByUserID(ctx context.Context, userID string) error
-}
-
-type IPasswordService interface {
-	Hash(string) (string, error)
-	Verify(password, hashedPassword string) error
-}
-
-type ITokenService interface {
-	SendEmail(to []string, subject string, body string) error
-}
-
-type IJWTService interface {
-	GenerateTokens(ctx context.Context, userID string) (*Token, error)
-	VerifyAccessToken(string) (string, error)
-	RefreshTokens(ctx context.Context, refreshToken string) (*Token, error)
-}
 
 // BlogUpdateInput for updating a blog
 type BlogUpdateInput struct {
@@ -163,3 +130,17 @@ type PaginatedBlogResponse struct {
 	TotalPages  int    `json:"total_pages"`
 	CurrentPage int    `json:"current_page"`
 }
+
+type PromoteDemoteStruct struct {
+	UserID string `json:"user_id" binding:"required"`
+}
+
+type ProfileUpdateInput struct {
+	UserID 	  string 			`json:"user_id" binding:"required"`
+	Firstname string             `json:"firstname"`
+    Lastname  string             `json:"lastname"`
+	Profile Profile				`json:"profile" binding:"required"`
+}
+
+
+
