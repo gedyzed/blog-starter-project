@@ -28,7 +28,7 @@ func (r *blogRepository) GetAllBlogs(ctx context.Context, page int, limit int, s
 	findOptions := options.Find().SetSkip(skip).SetLimit(int64(limit))
 	switch sort {
 	case "popular":
-		findOptions.SetSort(bson.D{{Key: "view_count", Value: -1}})
+		findOptions.SetSort(bson.D{{Key: "popularity_score", Value: -1}})
 	case "oldest":
 		findOptions.SetSort(bson.D{{Key: "created", Value: 1}})
 	default:
@@ -227,3 +227,42 @@ func (r *blogRepository) DislikeBlog(ctx context.Context, id string, userID stri
 	)
 	return err
 }
+
+func (r *blogRepository) EnsureIndexes(ctx context.Context) error {
+    indexModels := []mongo.IndexModel{
+        {Keys: bson.D{{Key: "created", Value: -1}}, 
+        },
+        {
+            Keys: bson.D{{Key: "view_count", Value: -1}},
+        },
+        {
+            Keys: bson.D{{Key: "popularity_score", Value: -1}},
+        },
+        {
+            Keys: bson.D{{Key: "tags", Value: 1}},
+        },
+    }
+    _, err := r.collection.Indexes().CreateMany(ctx, indexModels)
+    return err
+}
+
+func (r *blogRepository) UpdateStats(ctx context.Context, blogID string, score float64, commentCount int) error{
+	objID, err := primitive.ObjectIDFromHex(blogID)
+	if err != nil {
+		return fmt.Errorf("invalid blog id: %w", err)
+	}
+	update := bson.M{
+		"$set" : bson.M{
+			"popularity_score": score,
+			"comment_count" : commentCount,
+		},
+	}
+	_, err = r.collection.UpdateByID(ctx, objID, update)
+	if err != nil {
+		return fmt.Errorf("failed to update popularity statistics: %w", err)
+	}
+	return nil
+
+}
+
+
