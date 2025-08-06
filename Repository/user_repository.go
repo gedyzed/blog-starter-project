@@ -98,8 +98,8 @@ func (r *mongoUserRepo) Update(ctx context.Context, filterField, filterValue str
     if user.Profile.Bio != "" {
         updateFields["profile.bio"] = user.Profile.Bio
     }
-    if user.Profile.ProfilePicture != "" {
-        updateFields["profile.profilePicture"] = user.Profile.ProfilePicture
+    if user.Profile.ProfilePic != "" {
+        updateFields["profile.profilePicture"] = user.Profile.ProfilePic
     }
     if user.Profile.ContactInfo.Location != "" {
         updateFields["profile.contactInfo.location"] = user.Profile.ContactInfo.Location

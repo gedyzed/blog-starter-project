@@ -142,7 +142,7 @@ func (u *UserUsecases) ForgotPassword(ctx context.Context, email string) error {
 	// check if a user already exist
 	_, err := u.userRepo.GetByEmail(ctx, email)
 	if err != nil {
-		if errors.Is(domain.ErrInternalServerError, err) {
+		if errors.Is(err, domain.ErrInternalServerError) {
 			return domain.ErrInternalServerError
 		}
 
@@ -187,17 +187,30 @@ func (u *UserUsecases) ProfileUpdate(ctx context.Context, profileUpdate *domain.
 		return err
 	}
 
-	if existing.Firstname == profileUpdate.Firstname &&
-		existing.Lastname == profileUpdate.Lastname &&
-		existing.Profile == profileUpdate.Profile {
+	if (profileUpdate.Firstname == "" || profileUpdate.Firstname == existing.Firstname) &&
+		(profileUpdate.Lastname == "" || profileUpdate.Lastname == existing.Lastname) &&
+		(profileUpdate.Bio == "" || profileUpdate.Bio == existing.Profile.Bio) &&
+		(profileUpdate.ProfilePic == "" || profileUpdate.ProfilePic == existing.Profile.ProfilePic) &&
+		(profileUpdate.Location == "" || profileUpdate.Location == existing.Profile.ContactInfo.Location) &&
+		(profileUpdate.PhoneNumber == "" || profileUpdate.PhoneNumber == existing.Profile.ContactInfo.PhoneNumber) {
 		return domain.ErrNoUpdate
 	}
 
 	user := &domain.User{
 		Firstname: profileUpdate.Firstname,
 		Lastname: profileUpdate.Lastname,
-		Profile: profileUpdate.Profile,
+		Profile: domain.Profile{
+			Bio: profileUpdate.Bio,
+			ContactInfo: domain.ContactInformation{
+				Location: profileUpdate.Location,
+				PhoneNumber: profileUpdate.PhoneNumber,
+			},
+			ProfilePic: profileUpdate.ProfilePic,
+		},
 	}
 
 	return u.userRepo.Update(ctx, "_id", profileUpdate.UserID, user)
 }
+
+
+

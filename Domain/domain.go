@@ -32,7 +32,7 @@ type ContactInformation struct {
 type Profile struct {
 	Bio                string             `json:"bio" bson:"bio"`
 	ContactInfo 	   ContactInformation `json:"contact_info" bson:"contact_information"`
-	ProfilePicture     string             `json:"profile_picture" bson:"profile_picture"`
+	ProfilePic		   string             `json:"profile_picture" bson:"profile_picture"`
 	CreatedAt          time.Time          `json:"created_at" bson:"created_at"`
 	UpdatedAt          time.Time          `json:"updated_at" bson:"updated_at"`
 }
@@ -134,10 +134,14 @@ type PromoteDemoteStruct struct {
 }
 
 type ProfileUpdateInput struct {
-	UserID 	  string 			`json:"user_id" binding:"required"`
-	Firstname string             `json:"firstname"`
-    Lastname  string             `json:"lastname"`
-	Profile Profile				`json:"profile" binding:"required"`
+	UserID 	    string 	    `json:"user_id" binding:"required"`
+	Firstname   string       `json:"firstname"`
+    Lastname    string       `json:"lastname"`
+	Bio         string       `json:"bio"`
+	ProfilePic  string       `json:"profile_picture"`
+	Location    string       `json:"location"`
+	PhoneNumber string      `json:"phone_number"`
+
 }
 
 
