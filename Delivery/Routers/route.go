@@ -46,8 +46,6 @@ func RegisterUserRoutes(r *gin.Engine, handler *controllers.UserController) {
 		admins.POST("/promote-demote-user", handler.PromoteDemoteUser)
 	}
 
-	
-
 }
 
 func RegisterTokenRoutes(r *gin.Engine, handler *controllers.TokenController) {
@@ -55,6 +53,6 @@ func RegisterTokenRoutes(r *gin.Engine, handler *controllers.TokenController) {
 	tokens := r.Group("/tokens/")
 
 	{
-		tokens.POST("/send-vcode", handler.SendVerificationEmail) 
+		tokens.POST("/send-vcode", handler.SendVerificationEmail)
 	}
 }
