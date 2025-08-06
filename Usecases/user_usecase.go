@@ -187,13 +187,9 @@ func (u *UserUsecases) ProfileUpdate(ctx context.Context, profileUpdate *domain.
 		return err
 	}
 
-	existingProfile := &domain.ProfileUpdateInput{
-		Firstname: existing.Firstname,
-		Lastname: existing.Lastname,
-		Profile: existing.Profile,
-	} 
-
-	if existingProfile == profileUpdate {
+	if existing.Firstname == profileUpdate.Firstname &&
+		existing.Lastname == profileUpdate.Lastname &&
+		existing.Profile == profileUpdate.Profile {
 		return domain.ErrNoUpdate
 	}
 
@@ -204,5 +200,4 @@ func (u *UserUsecases) ProfileUpdate(ctx context.Context, profileUpdate *domain.
 	}
 
 	return u.userRepo.Update(ctx, "_id", profileUpdate.UserID, user)
-	
 }

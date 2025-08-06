@@ -7,7 +7,7 @@ import (
 	controllers "github.com/gedyzed/blog-starter-project/Delivery/Controllers"
 	routers "github.com/gedyzed/blog-starter-project/Delivery/Routers"
 	infrastructure "github.com/gedyzed/blog-starter-project/Infrastructure"
-	"github.com/gedyzed/blog-starter-project/Infrastructure/config"
+	config "github.com/gedyzed/blog-starter-project/Infrastructure/config"
 	repository "github.com/gedyzed/blog-starter-project/Repository"
 	usecases "github.com/gedyzed/blog-starter-project/Usecases"
 	"github.com/gin-gonic/gin"

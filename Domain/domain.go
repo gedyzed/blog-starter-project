@@ -31,7 +31,7 @@ type ContactInformation struct {
 
 type Profile struct {
 	Bio                string             `json:"bio" bson:"bio"`
-	ContactInformation ContactInformation `json:"contact_information" bson:"contact_information"`
+	ContactInfo 	   ContactInformation `json:"contact_info" bson:"contact_information"`
 	ProfilePicture     string             `json:"profile_picture" bson:"profile_picture"`
 	CreatedAt          time.Time          `json:"created_at" bson:"created_at"`
 	UpdatedAt          time.Time          `json:"updated_at" bson:"updated_at"`

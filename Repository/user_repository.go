@@ -65,52 +65,62 @@ func (r *mongoUserRepo) GetByUsername(ctx context.Context, username string) (*do
 
 func (r *mongoUserRepo) Update(ctx context.Context, filterField, filterValue string, user *domain.User) error {
 
-	var filter bson.M
-	switch filterField {
-	case "_id":
-		objID, err := primitive.ObjectIDFromHex(filterValue)
-		if err != nil {
-			return ErrInternalServer
-		}
-		filter = bson.M{"_id": objID}
-	default:
-		filter = bson.M{filterField: filterValue}
-	}
+    var filter bson.M
+    switch filterField {
+    case "_id":
+        objID, err := primitive.ObjectIDFromHex(filterValue)
+        if err != nil {
+            return domain.ErrInternalServerError
+        }
+        filter = bson.M{"_id": objID}
+    default:
+        filter = bson.M{filterField: filterValue}
+    }
 
-	updateFields := bson.M{}
-	if user.Firstname != "" {
-		updateFields["firstname"] = user.Firstname
-	}
-	if user.Lastname != "" {
-		updateFields["lastname"] = user.Lastname
-	}
-	if user.Username != "" {
-		updateFields["username"] = user.Username
-	}
-	if user.Role != "" {
-		updateFields["role"] = user.Role
-	}
-	if user.Password != "" {
-		updateFields["password"] = user.Password
-	}
-	p := domain.Profile{}
-	if p != user.Profile { 
-		updateFields["profile"] = user.Profile
-	}
-	updateFields["updated_at"] = time.Now()
+    updateFields := bson.M{}
+    if user.Firstname != "" {
+        updateFields["firstname"] = user.Firstname
+    }
+    if user.Lastname != "" {
+        updateFields["lastname"] = user.Lastname
+    }
+    if user.Username != "" {
+        updateFields["username"] = user.Username
+    }
+    if user.Role != "" {
+        updateFields["role"] = user.Role
+    }
+    if user.Password != "" {
+        updateFields["password"] = user.Password
+    }
 
-	if len(updateFields) == 0 {
-		return domain.ErrNoUpdate
-	}
+    
+    if user.Profile.Bio != "" {
+        updateFields["profile.bio"] = user.Profile.Bio
+    }
+    if user.Profile.ProfilePicture != "" {
+        updateFields["profile.profilePicture"] = user.Profile.ProfilePicture
+    }
+    if user.Profile.ContactInfo.Location != "" {
+        updateFields["profile.contactInfo.location"] = user.Profile.ContactInfo.Location
+    }
+    if user.Profile.ContactInfo.PhoneNumber != "" {
+        updateFields["profile.contactInfo.phoneNumber"] = user.Profile.ContactInfo.PhoneNumber
+    }
+    updateFields["updated_at"] = time.Now()
 
-	update := bson.M{"$set": updateFields}
+    if len(updateFields) == 0 {
+        return domain.ErrNoUpdate
+    }
 
-	_, err := r.coll.UpdateOne(ctx, filter, update)
-	if err != nil {
-		return domain.ErrInternalServerError
-	}
+    update := bson.M{"$set": updateFields}
 
-	return nil
+    _, err := r.coll.UpdateOne(ctx, filter, update)
+    if err != nil {
+        return domain.ErrInternalServerError
+    }
+
+    return nil
 }
 
 func (r *mongoUserRepo) Delete(ctx context.Context, id string) error {

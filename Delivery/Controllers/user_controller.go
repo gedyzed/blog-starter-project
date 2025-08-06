@@ -180,7 +180,6 @@ func (uc *UserController) ResetPassword(c *gin.Context){
 		return
 	}
 
-
 	email, err := uc.userUsecase.VerifyCode(ctx, token)
 	if err != nil {
 		c.IndentedJSON(500, gin.H{"error": err.Error()})
