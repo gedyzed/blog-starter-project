@@ -5,12 +5,11 @@ import (
 	"errors"
 	"time"
 
-	domain "github.com/gedyzed/blog-starter-project/Domain"
+	"github.com/gedyzed/blog-starter-project/Domain"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
-
 
 type mongoUserRepo struct {
 	coll *mongo.Collection
@@ -26,38 +25,41 @@ func (r *mongoUserRepo) Add(ctx context.Context, user *domain.User) error {
 		if we, ok := err.(mongo.WriteException); ok {
 			for _, e := range we.WriteErrors {
 				if e.Code == 1100 {
-					return domain.ErrEmailAlreadyExists
+					return domain.ErrUserAlreadyExist
 				}
 			}
 		}
 
-		return domain.ErrInternalServerError
+		return domain.ErrInternalServer
 	}
 
 	return nil
 }
 
 func (r *mongoUserRepo) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
-
-	// Check for duplicate username
 	var user *domain.User
 	filter := bson.M{"email": email}
+
 	err := r.coll.FindOne(ctx, filter).Decode(&user)
 	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, domain.ErrUserNotFound
+		}
 		return nil, domain.ErrUserNotFound
-
 	}
+
 	return user, nil
 }
 
 func (r *mongoUserRepo) GetByUsername(ctx context.Context, username string) (*domain.User, error) {
-
-
 	var user *domain.User
 	filter := bson.M{"username": username}
 	err := r.coll.FindOne(ctx, filter).Decode(&user)
 	if err != nil {
-		return nil, domain.ErrUserNotFound
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, domain.ErrUserNotFound
+		}
+		return nil, domain.ErrInternalServer
 	}
 
 	return user, nil
@@ -70,7 +72,7 @@ func (r *mongoUserRepo) Update(ctx context.Context, filterField, filterValue str
 	case "_id":
 		objID, err := primitive.ObjectIDFromHex(filterValue)
 		if err != nil {
-			return ErrInternalServer
+			return domain.ErrInvalidUserID
 		}
 		filter = bson.M{"_id": objID}
 	default:
@@ -94,7 +96,7 @@ func (r *mongoUserRepo) Update(ctx context.Context, filterField, filterValue str
 		updateFields["password"] = user.Password
 	}
 	p := domain.Profile{}
-	if p != user.Profile { 
+	if p != user.Profile {
 		updateFields["profile"] = user.Profile
 	}
 	updateFields["updated_at"] = time.Now()
@@ -107,17 +109,16 @@ func (r *mongoUserRepo) Update(ctx context.Context, filterField, filterValue str
 
 	_, err := r.coll.UpdateOne(ctx, filter, update)
 	if err != nil {
-		return domain.ErrInternalServerError
+		return domain.ErrInternalServer
 	}
 
 	return nil
 }
 
 func (r *mongoUserRepo) Delete(ctx context.Context, id string) error {
-
 	result, err := r.coll.DeleteOne(ctx, bson.D{{Key: "_id", Value: id}})
 	if err != nil {
-		return domain.ErrInternalServerError
+		return domain.ErrInternalServer
 	}
 
 	if result.DeletedCount == 0 {
@@ -127,25 +128,23 @@ func (r *mongoUserRepo) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (r *mongoUserRepo) Get(ctx context.Context, id string) (*domain.User, error){
-
+func (r *mongoUserRepo) Get(ctx context.Context, id string) (*domain.User, error) {
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return nil, domain.ErrIncorrectUserID
+		return nil, domain.ErrInvalidUserID
 	}
 
 	query := bson.M{"_id": objID}
 	result := r.coll.FindOne(ctx, query)
-	if errors.Is(result.Err(), mongo.ErrNoDocuments){
-		return nil, domain.ErrIncorrectUserID
+	if errors.Is(result.Err(), mongo.ErrNoDocuments) {
+		return nil, domain.ErrUserNotFound
 	}
 
-	var existing *domain.User
-	err = result.Decode(&existing)
+	var user *domain.User
+	err = result.Decode(&user)
 	if err != nil {
-		return nil, domain.ErrInternalServerError
+		return nil, domain.ErrInternalServer
 	}
-	
-	return existing, nil
-}
 
+	return user, nil
+}
