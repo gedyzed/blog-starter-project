@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"time"
 
 	domain "github.com/gedyzed/blog-starter-project/Domain"
 )
@@ -123,7 +124,21 @@ func(uc *blogUsecase) RefreshPopularity(ctx context.Context, blogID string) erro
 	return uc.blogRepo.UpdateStats(ctx, blogID, score, counts)
 }
 
+func(uc *blogUsecase) FilterBlogs(ctx context.Context, tags []string, startDate, endDate *time.Time, sortBy string) ([]*domain.Blog, error){
+	
+	if startDate != nil && endDate != nil && endDate.Before(*startDate) {
+		return nil, errors.New("toDate cannot be before fromDate")
+	}
 
+	validSort := map[string]bool{"popular": true, "oldest": true, "": true}
+	if !validSort[sortBy]{
+		return nil, errors.New("invalid sort format ")
+	}
+	
+	return uc.blogRepo.FilterBlogs(ctx, startDate, endDate, tags, sortBy)
+}
+
+//Helper function
 func CalculateScore(views, likes, dislikes, comments int) float64 {
     return float64(views)*0.5 + float64(likes)*2 - float64(dislikes)*1 + float64(comments)*1.5
 }

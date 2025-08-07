@@ -1,6 +1,9 @@
 package domain
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 type BlogRepository interface {
 	GetAllBlogs(ctx context.Context, page int, limit int, sort string) ([]Blog, int, error)
@@ -13,6 +16,7 @@ type BlogRepository interface {
 	DislikeBlog(ctx context.Context, blogID string, userID string) error
 	EnsureIndexes(ctx context.Context) error
 	UpdateStats(ctx context.Context, blogID string, score float64, commentCount int) error
+	FilterBlogs(ctx context.Context, startDate, endDate *time.Time,tags []string, sort string)([]*Blog, error)
 }
 
 type CommentRepository interface {
