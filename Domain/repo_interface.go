@@ -16,7 +16,7 @@ type BlogRepository interface {
 	DislikeBlog(ctx context.Context, blogID string, userID string) error
 	EnsureIndexes(ctx context.Context) error
 	UpdateStats(ctx context.Context, blogID string, score float64, commentCount int) error
-	FilterBlogs(ctx context.Context, startDate, endDate *time.Time,tags []string, sort string)([]*Blog, error)
+	FilterBlogs(ctx context.Context, startDate, endDate *time.Time,tags []string, sort string, page, limit int)([]Blog, int, error)
 	SearchBlogs(ctx context.Context, keyword string, limit, page int) ([]Blog, error)
 }
 

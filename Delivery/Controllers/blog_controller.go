@@ -222,13 +222,27 @@ func (h *BlogHandler) FilterBlogs(c *gin.Context){
 		}
 	}
 
-	blogs, err := h.blogUsecase.FilterBlogs(ctx, tags, startDate, endDate, sort)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	pageStr := c.DefaultQuery("page", "1")
+	limitStr := c.DefaultQuery("limit", "10")
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid page number"})
 		return
 	}
 
-	c.JSON(http.StatusOK, blogs)
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit"})
+		return
+	}
+
+
+	result, err := h.blogUsecase.FilterBlogs(ctx, tags, startDate, endDate, sort, page, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, result)
 }
 
 func (h *BlogHandler) SearchBlogs(c *gin.Context) {

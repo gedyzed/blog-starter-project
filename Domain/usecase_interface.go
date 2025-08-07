@@ -14,7 +14,7 @@ type BlogUsecase interface {
 	LikeBlog(ctx context.Context, blogID string, userID string) error
 	DislikeBlog(ctx context.Context, blogID string, userID string) error
 	RefreshPopularity(ctx context.Context, blogID string) error
-	FilterBlogs(ctx context.Context, tags []string, startDate, endDate *time.Time, sortBy string) ([]*Blog, error)
+	FilterBlogs(ctx context.Context, tags []string, startDate, endDate *time.Time, sortBy string, page int, limit int) (*PaginatedBlogResponse, error)
 	SearchBlogs(ctx context.Context, keyword string, page int) ([]Blog, error)
 }
 
