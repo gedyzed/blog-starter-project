@@ -229,32 +229,39 @@ func (r *blogRepository) DislikeBlog(ctx context.Context, id string, userID stri
 }
 
 func (r *blogRepository) EnsureIndexes(ctx context.Context) error {
-    indexModels := []mongo.IndexModel{
-        {Keys: bson.D{{Key: "created", Value: -1}}, 
-        },
-        {
-            Keys: bson.D{{Key: "view_count", Value: -1}},
-        },
-        {
-            Keys: bson.D{{Key: "popularity_score", Value: -1}},
-        },
-        {
-            Keys: bson.D{{Key: "tags", Value: 1}},
-        },
-    }
-    _, err := r.collection.Indexes().CreateMany(ctx, indexModels)
-    return err
+	indexModels := []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "title", Value: "text"},
+				{Key: "content", Value: "text"},
+				{Key: "author", Value: "text"},
+			},
+			Options: options.Index().SetDefaultLanguage("english"),
+		},
+		{Keys: bson.D{{Key: "created", Value: -1}}},
+		{
+			Keys: bson.D{{Key: "view_count", Value: -1}},
+		},
+		{
+			Keys: bson.D{{Key: "popularity_score", Value: -1}},
+		},
+		{
+			Keys: bson.D{{Key: "tags", Value: 1}},
+		},
+	}
+	_, err := r.collection.Indexes().CreateMany(ctx, indexModels)
+	return err
 }
 
-func (r *blogRepository) UpdateStats(ctx context.Context, blogID string, score float64, commentCount int) error{
+func (r *blogRepository) UpdateStats(ctx context.Context, blogID string, score float64, commentCount int) error {
 	objID, err := primitive.ObjectIDFromHex(blogID)
 	if err != nil {
 		return fmt.Errorf("invalid blog id: %w", err)
 	}
 	update := bson.M{
-		"$set" : bson.M{
+		"$set": bson.M{
 			"popularity_score": score,
-			"comment_count" : commentCount,
+			"comment_count":    commentCount,
 		},
 	}
 	_, err = r.collection.UpdateByID(ctx, objID, update)
@@ -264,6 +271,7 @@ func (r *blogRepository) UpdateStats(ctx context.Context, blogID string, score f
 	return nil
 
 }
+
 
 func(r *blogRepository) FilterBlogs(ctx context.Context, startDate, endDate *time.Time,tags []string, sort string)([]*domain.Blog, error){
 	filter := bson.M{}
@@ -308,3 +316,31 @@ func(r *blogRepository) FilterBlogs(ctx context.Context, startDate, endDate *tim
 
 }
 
+func (r *blogRepository) SearchBlogs(ctx context.Context, query string, limit, page int) ([]domain.Blog, error) {
+	skip := (page - 1) * limit
+
+	filter := bson.M{
+		"$text": bson.M{
+			"$search": query,
+		},
+	}
+
+	findOptions := options.Find()
+	findOptions.SetProjection(bson.M{"score": bson.M{"$meta": "textScore"}})
+	findOptions.SetSort(bson.D{{Key: "score", Value: bson.M{"$meta": "textScore"}}})
+	findOptions.SetSkip(int64(skip))
+	findOptions.SetLimit(int64(limit))
+
+	cursor, err := r.collection.Find(ctx, filter, findOptions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search blogs: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	var blogs []domain.Blog
+	if err := cursor.All(ctx, &blogs); err != nil {
+		return nil, fmt.Errorf("failed to decode blogs: %w", err)
+	}
+
+	return blogs, nil
+}

@@ -17,7 +17,9 @@ func RegisterBlogRoutes(r *gin.Engine, blogHandler *controllers.BlogHandler, com
 		blog.POST("/:id/like", blogHandler.LikeBlog)
 		blog.POST("/:id/dislike", blogHandler.DislikeBlog)
 		blog.GET("/filter", blogHandler.FilterBlogs )
+		blog.GET("/search", blogHandler.SearchBlogs)
 	}
+  
 	comments := r.Group("/comments")
 	{
 		comments.POST("/:blogId", commentHandler.CreateComment)

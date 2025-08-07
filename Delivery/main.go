@@ -18,7 +18,7 @@ import (
 func main() {
 
 	conf, err := config.LoadConfig()
-	
+
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -26,8 +26,7 @@ func main() {
 
 	db := infrastructure.DbInit(conf.Mongo.URL)
 
-
-  ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	// setup collections
 	blogCollection := db.Collection("blogs")
@@ -64,9 +63,8 @@ func main() {
 	tokenUsecase := usecases.NewTokenUsecase(tokenRepo, vtokenRepo, tokenService, jwtService)
 	userUsecase := usecases.NewUserUsecase(userRepo, tokenUsecase, passService)
 
-	blogUsecase := usecases.NewBlogUsecase(blogRepo, commentRepo,dispatcher)
-	commentUsecase := usecases.NewCommentUsecase(commentRepo,dispatcher)
-
+	blogUsecase := usecases.NewBlogUsecase(blogRepo, commentRepo, dispatcher)
+	commentUsecase := usecases.NewCommentUsecase(commentRepo, dispatcher)
 
 	// Setup handlers
 	userHandler := controllers.NewUserController(userUsecase)
