@@ -1,6 +1,9 @@
 package domain
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 type BlogUsecase interface {
 	GetAllBlogs(ctx context.Context, page int, limit int, sort string) (*PaginatedBlogResponse, error)
@@ -11,8 +14,10 @@ type BlogUsecase interface {
 	LikeBlog(ctx context.Context, blogID string, userID string) error
 	DislikeBlog(ctx context.Context, blogID string, userID string) error
 	RefreshPopularity(ctx context.Context, blogID string) error
+	FilterBlogs(ctx context.Context, tags []string, startDate, endDate *time.Time, sortBy string) ([]*Blog, error)
 	SearchBlogs(ctx context.Context, keyword string, page int) ([]Blog, error)
 }
+
 type CommentUsecase interface {
 	CreateComment(ctx context.Context, blogID string, userID string, message string) (*Comment, error)
 	GetAllComments(ctx context.Context, blogID string, page int, limit int, sort string) ([]Comment, int, error)

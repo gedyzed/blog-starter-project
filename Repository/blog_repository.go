@@ -272,6 +272,50 @@ func (r *blogRepository) UpdateStats(ctx context.Context, blogID string, score f
 
 }
 
+
+func(r *blogRepository) FilterBlogs(ctx context.Context, startDate, endDate *time.Time,tags []string, sort string)([]*domain.Blog, error){
+	filter := bson.M{}
+	if len(tags) >0{
+		filter["tags"] = bson.M{"$in": tags}
+	}
+	dateFilter := bson.M{}
+	if startDate != nil{
+		dateFilter["$gte"] = *startDate
+	}
+	if endDate != nil{
+		dateFilter["$lte"] = *endDate
+	}
+	if len(dateFilter) >0{
+		filter["created"] = dateFilter
+	}
+
+	findOptions :=  options.Find()
+	switch sort {
+	case "popular":
+		findOptions.SetSort(bson.D{{Key: "popularity_score", Value: -1}})
+	case "oldest":
+		findOptions.SetSort(bson.D{{Key: "created", Value: 1}})
+	default:
+		findOptions.SetSort(bson.D{{Key: "created", Value: -1}})
+	}
+
+	var blogs []*domain.Blog
+	
+	cursor, err := r.collection.Find(ctx, filter, findOptions)
+	
+	if err != nil{
+		return nil, fmt.Errorf("failed fetching blogs: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	if err := cursor.All(ctx, &blogs); err != nil{
+		return nil, fmt.Errorf("failed decoding blogs: %w", err)
+	}
+
+	return blogs,nil
+
+}
+
 func (r *blogRepository) SearchBlogs(ctx context.Context, query string, limit, page int) ([]domain.Blog, error) {
 	skip := (page - 1) * limit
 
