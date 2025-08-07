@@ -124,7 +124,7 @@ func (uc *blogUsecase) RefreshPopularity(ctx context.Context, blogID string) err
 	return uc.blogRepo.UpdateStats(ctx, blogID, score, counts)
 }
 
-func(uc *blogUsecase) FilterBlogs(ctx context.Context, tags []string, startDate, endDate *time.Time, sortBy string) ([]*domain.Blog, error){
+func(uc *blogUsecase)FilterBlogs(ctx context.Context, tags []string, startDate, endDate *time.Time, sortBy string, page int, limit int) (*domain.PaginatedBlogResponse, error){
 	
 	if startDate != nil && endDate != nil && endDate.Before(*startDate) {
 		return nil, errors.New("toDate cannot be before fromDate")
@@ -135,7 +135,24 @@ func(uc *blogUsecase) FilterBlogs(ctx context.Context, tags []string, startDate,
 		return nil, errors.New("invalid sort format ")
 	}
 	
-	return uc.blogRepo.FilterBlogs(ctx, startDate, endDate, tags, sortBy)
+	if limit > 100 {
+		limit = 100
+	}
+
+	blogs, totalCount, err := uc.blogRepo.FilterBlogs(ctx, startDate, endDate, tags, sortBy, page, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get blogs: %w", err)
+	}
+
+	totalPages := int(math.Ceil(float64(totalCount) / float64(limit)))
+
+	return &domain.PaginatedBlogResponse{
+		Blogs:       blogs,
+		TotalCount:  totalCount,
+		TotalPages:  totalPages,
+		CurrentPage: page,
+	}, nil
+	
 }
 
 //Helper function
