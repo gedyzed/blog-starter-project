@@ -9,20 +9,22 @@ import (
 
 // User represents a user in the system
 type User struct {
-	ID        primitive.ObjectID  `json:"id" bson:"_id"`
-    Firstname string             `json:"firstname" bson:"firstname"`
-    Lastname  string             `json:"lastname" bson:"lastname"`
-    Username  string             `json:"username" bson:"username"`
-    Email     string             `json:"email" bson:"email"`
-    VCode     string             `json:"vcode" bson:"-"`
-    Role      string             `json:"role" bson:"role"`
-    Password  string             `json:"password" bson:"password"`
-    CreatedAt time.Time          `json:"created_at" bson:"created_at"`
-    UpdatedAt time.Time          `json:"updated_at" bson:"updated_at"`
-	
-    // ← embed Profile here
-    Profile Profile `json:"profile" bson:"profile"`
+	ID        primitive.ObjectID `json:"id" bson:"_id"`
+	Firstname string             `json:"firstname" bson:"firstname"`
+	Lastname  string             `json:"lastname" bson:"lastname"`
+	Username  string             `json:"username,omitempty" bson:"username,omitempty"` // optional for OAuth
+	Email     string             `json:"email" bson:"email"`
+	VCode     string             `json:"vcode,omitempty" bson:"-"` // used only in logic, not saved
+	Role      string             `json:"role" bson:"role"`
+	Password  string             `json:"password,omitempty" bson:"password,omitempty"` // only for local users
+	Provider  string             `json:"provider" bson:"provider"`                     // "local", "google", etc.
+	CreatedAt time.Time          `json:"created_at" bson:"created_at"`
+	UpdatedAt time.Time          `json:"updated_at" bson:"updated_at"`
+
+	// embedded user profile
+	Profile Profile `json:"profile" bson:"profile"` 
 }
+
 
 type ContactInformation struct {
 	PhoneNumber string `json:"phone_number"`
@@ -143,6 +145,20 @@ type ProfileUpdateInput struct {
 	PhoneNumber string      `json:"phone_number"`
 
 }
+
+
+// struct for google oauth response
+type UserInfo struct {
+    Sub           string `json:"sub"`
+    Name          string `json:"name"`
+    GivenName     string `json:"given_name"`
+    FamilyName    string `json:"family_name"`
+    Picture       string `json:"picture"`
+    Email         string `json:"email"`
+    EmailVerified bool   `json:"email_verified"`
+    Locale        string `json:"locale"`
+}
+
 
 
 

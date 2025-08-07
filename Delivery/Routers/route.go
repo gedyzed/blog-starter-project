@@ -38,6 +38,7 @@ func RegisterUserRoutes(r *gin.Engine, handler *controllers.UserController) {
 		users.POST("/forgot-password", handler.ForgotPassword)
 		users.POST("/reset-password", handler.ResetPassword)
 		users.POST("/update-profile", handler.ProfileUpdate)
+	
 	}
 
 	admins := r.Group("/admins")
@@ -45,8 +46,6 @@ func RegisterUserRoutes(r *gin.Engine, handler *controllers.UserController) {
 	{
 		admins.POST("/promote-demote-user", handler.PromoteDemoteUser)
 	}
-
-	
 
 }
 
@@ -56,5 +55,17 @@ func RegisterTokenRoutes(r *gin.Engine, handler *controllers.TokenController) {
 
 	{
 		tokens.POST("/send-vcode", handler.SendVerificationEmail) 
+	}
+}
+
+
+func RegisterOAuthRoutes(r *gin.Engine, handler *controllers.OAuthController){
+
+	oauth := r.Group("/oauth")
+
+	{
+		oauth.GET("/auth/login", handler.OAuthHandler)
+		oauth.GET("/callback", handler.OAuthCallBack)
+		oauth.POST("/refresh-token", handler.RefreshToken)
 	}
 }

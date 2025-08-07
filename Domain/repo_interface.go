@@ -24,7 +24,7 @@ type CommentRepository interface {
 
 type IUserRepository interface {
 
-	Add(ctx context.Context, user *User) error
+	Add(ctx context.Context, user *User) (string, error)
 	Update(ctx context.Context, filterField, filterValue string, user *User) error
 	Delete(ctx context.Context, id string) error
 	Get(ctx context.Context, id string) (*User, error)
@@ -33,7 +33,7 @@ type IUserRepository interface {
 }
 
 type ITokenRepo interface{
-	Save(ctx context.Context, tokens Token) error
+	Save(ctx context.Context, tokens *Token) error
 	FindByUserID(ctx context.Context, userID string) (*Token, error)
 	DeleteByUserID(ctx context.Context, userID string) error
 }

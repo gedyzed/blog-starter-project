@@ -105,29 +105,57 @@ func (u *UserUsecases) RefreshToken(ctx context.Context, id string, refreshToken
 	return u.tokenUsecase.RefreshTokens(ctx, refreshToken)
 }
 
-func (u *UserUsecases) Register(ctx context.Context, user *domain.User) error {
+func (u *UserUsecases) Register(ctx context.Context, user *domain.User) (string, error) {
 
-	// check if username exists
-	existing, err := u.userRepo.GetByUsername(ctx, user.Username)
+	// Ensure Provider is set
+	if user.Provider == "" {
+		user.Provider = "local"
+	}
+
+	// Ensure User Role 
+	if user.Role != "user"{
+		user.Role = "user"
+	}
+
+	// Check email uniqueness
+	existing, err := u.userRepo.GetByEmail(ctx, user.Email)
+	if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
+		return "", domain.ErrInternalServerError
+	}
 	if existing != nil {
-		return domain.ErrUsernameAlreadyExists
+		return "", domain.ErrEmailAlreadyExists
 	}
 
-	// check if email exists
-	existing, err = u.userRepo.GetByEmail(ctx, user.Email)
-	if existing != nil {
-		return domain.ErrEmailAlreadyExists
+
+	// Check username uniqueness (if provided)
+	if user.Username != "" {
+		existing, err = u.userRepo.GetByUsername(ctx, user.Username)
+		if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
+			return "", domain.ErrInternalServerError
+		}
+		if existing != nil {
+			return "", domain.ErrUsernameAlreadyExists
+		}
 	}
 
-	// hash the user password
-	user.Password, err = u.passwordService.Hash(user.Password)
-	if err != nil {
-		return domain.ErrInternalServerError
+	// Handle password
+	if user.Provider == "local" {
+		user.Password, err = u.passwordService.Hash(user.Password)
+		if err != nil {
+			return "", domain.ErrInternalServerError
+		}
+	} else {
+		user.Password = ""
 	}
 
-	// Add user to database
+	// Set timestamps
+	user.CreatedAt = time.Now()
+	user.UpdatedAt = time.Now()
+
+	// Save user to DB
 	return u.userRepo.Add(ctx, user)
 }
+
 
 func (u *UserUsecases) VerifyCode(ctx context.Context, vcode string) (string, error) {
 	return u.tokenUsecase.VerifyCode(ctx, vcode)
@@ -210,6 +238,10 @@ func (u *UserUsecases) ProfileUpdate(ctx context.Context, profileUpdate *domain.
 	}
 
 	return u.userRepo.Update(ctx, "_id", profileUpdate.UserID, user)
+}
+
+func (u *UserUsecases) SaveToken (ctx context.Context, tokens *domain.Token) error {
+	return u.tokenUsecase.SaveToken(ctx, tokens)
 }
 
 

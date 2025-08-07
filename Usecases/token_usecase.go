@@ -41,7 +41,8 @@ type ITokenUsecase interface{
 	RefreshTokens(ctx context.Context, refreshToken string) (*domain.Token, error)
 	GenerateTokens(ctx context.Context, userID string) (*domain.Token, error)
 	VerifyAccessToken(string) (string, error)
-	DeleteByUserID(ctx context.Context, userID string) error
+	DeleteByUserID(ctx context.Context, userID string) error	
+	SaveToken(ctx context.Context, token *domain.Token) error 
 
 }
 
@@ -151,6 +152,10 @@ func (t *tokenUsecase) VerifyAccessToken(tokenString string) (string, error){
 
 func (t *tokenUsecase) DeleteByUserID(ctx context.Context, userID string) error{
 		return t.tokenRepo.DeleteByUserID(ctx, userID)
+}
+
+func (t *tokenUsecase) SaveToken(ctx context.Context, tokens *domain.Token) error{
+	 return t.tokenRepo.Save(ctx, tokens)
 }
 
 

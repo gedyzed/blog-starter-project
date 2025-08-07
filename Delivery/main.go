@@ -8,6 +8,7 @@ import (
 	routers "github.com/gedyzed/blog-starter-project/Delivery/Routers"
 	infrastructure "github.com/gedyzed/blog-starter-project/Infrastructure"
 	config "github.com/gedyzed/blog-starter-project/Infrastructure/config"
+	"github.com/gedyzed/blog-starter-project/Infrastructure/oauth"
 	repository "github.com/gedyzed/blog-starter-project/Repository"
 	usecases "github.com/gedyzed/blog-starter-project/Usecases"
 	"github.com/gin-gonic/gin"
@@ -16,7 +17,8 @@ import (
 func main() {
 
 	conf, err := config.LoadConfig()
-	
+	googleOauthConfig := oauth.NewGoogleOauthConfig(&conf.OAuth)
+
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -62,12 +64,15 @@ func main() {
 	blogHandler := controllers.NewBlogHandler(blogUsecase)
 	commentHandler := controllers.NewCommentHandler(commentUsecase)
 	tokenHandler := controllers.NewTokenController(tokenUsecase)
+	oAuthHandler := controllers.NewOAuthController(googleOauthConfig, userUsecase)
+
 
 	r := gin.Default()
 
 	routers.RegisterBlogRoutes(r, blogHandler, commentHandler)
 	routers.RegisterUserRoutes(r, userHandler)
 	routers.RegisterTokenRoutes(r, tokenHandler)
+	routers.RegisterOAuthRoutes(r,  oAuthHandler)
 
 	r.Run(":" + conf.Port)
 }

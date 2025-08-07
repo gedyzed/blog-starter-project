@@ -14,4 +14,6 @@ var (
 	ErrUsernameAlreadyExists = errors.New("username already exists")
 	ErrIncorrectUserID = errors.New("incorrect userID")
 	ErrNoUpdate = errors.New("no update has been applied")
+	ErrBadRequest = errors.New("invalid or bad request")
+	ErrDuplicateKey = errors.New("duplicate key found")
 )

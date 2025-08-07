@@ -7,6 +7,7 @@ import (
 
 	domain "github.com/gedyzed/blog-starter-project/Domain"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -26,9 +27,14 @@ func NewMongoTokenRepository(coll *mongo.Collection) domain.ITokenRepo {
 	}
 }
 
-func (r *mongoTokenRepo) Save(ctx context.Context, tokens domain.Token) error {
-	filter := bson.M{"user_id": tokens.UserID}
+func (r *mongoTokenRepo) Save(ctx context.Context, tokens *domain.Token) error {
 
+    oid, err := primitive.ObjectIDFromHex(tokens.UserID)
+	if err != nil {
+		return domain.ErrIncorrectUserID
+	}
+
+	filter := bson.M{"user_id": oid}
 	update := bson.M{
 		"$set": bson.M{
 			"access_token":   tokens.AccessToken,
@@ -42,7 +48,7 @@ func (r *mongoTokenRepo) Save(ctx context.Context, tokens domain.Token) error {
 		},
 	}
 
-	_, err := r.coll.UpdateOne(ctx, filter, update, options.Update().SetUpsert(true))
+	_, err = r.coll.UpdateOne(ctx, filter, update, options.Update().SetUpsert(true))
 	if err != nil {
 
 	}

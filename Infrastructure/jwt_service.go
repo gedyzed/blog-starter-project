@@ -78,7 +78,7 @@ func (s *JWTTokenService) GenerateTokens(ctx context.Context, userID string) (*d
 		RefreshExpiry: time.Now().Add(s.refreshTTL),
 	}
 
-	if err := s.repo.Save(ctx, tokens); err != nil {
+	if err := s.repo.Save(ctx, &tokens); err != nil {
 		return nil, err
 	}
 

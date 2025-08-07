@@ -4,6 +4,8 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
+
+    "golang.org/x/oauth2"
 )
 
 type Config struct {
@@ -12,6 +14,7 @@ type Config struct {
 	Port  string      `mapstructure:"port" validate:"required,min=1,max=65535"`
 	Mongo MongoConfig `mapstructure:"mongo" validate:"required"`
 	Auth  AuthConfig  `mapstructure:"auth" validate:"required"`
+	OAuth OAuthConfig `mapstructure:"oauth" validate:required` 
 	Email EmailConfig `mapstructure:"email" validate:"required"`
 }
 
@@ -28,6 +31,14 @@ type EmailConfig struct {
 	SenderEmail string `mapstructure:"sender_email" validate:"required,email"`
 	SMTPHost    string `mapstructure:"smtp_host" validate:"required,hostname"`
 	SMTPPort    string `mapstructure:"smtp_port" validate:"required,numeric"`
+}
+
+type OAuthConfig struct {
+  ClientID      string `mapstructure:"client_id" validate:"required"`
+  ClientSecret  string `mapstructure:"client_secret" validate:"required"`
+  Endpoint      oauth2.Endpoint `mapstructure:"endpoint" validate:"required"`
+  RedirectURL   string `mapstructure:"redirect_url" validate:"required"`
+  Scopes        []string `mapstructure:"scopes" validate:"required"`
 }
 
 
@@ -62,6 +73,12 @@ func LoadConfig() (*Config, error) {
 	viper.BindEnv("email.sender_email", "EMAIL_SENDER_EMAIL")
 	viper.BindEnv("email.smtp_host", "EMAIL_SMTP_HOST")
 	viper.BindEnv("email.smtp_port", "EMAIL_SMTP_PORT")
+
+	// oauth config
+	viper.BindEnv("oauth.client_id", "OAUTH_CLIENT_ID")
+	viper.BindEnv("oauth.client_secret", "OAUTH_CLIENT_SECRET")
+	viper.BindEnv("oauth.redirect_url", "OAUTH_REDIRECT_URL")
+	viper.SetDefault("oauth.scopes", []string{"email", "profile"})
 
 	viper.SetDefault("port", "8080")
 

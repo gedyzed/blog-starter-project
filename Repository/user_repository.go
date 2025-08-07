@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	domain "github.com/gedyzed/blog-starter-project/Domain"
@@ -20,46 +21,65 @@ func NewMongoUserRepo(coll *mongo.Collection) domain.IUserRepository {
 	return &mongoUserRepo{coll: coll}
 }
 
-func (r *mongoUserRepo) Add(ctx context.Context, user *domain.User) error {
-	_, err := r.coll.InsertOne(ctx, user)
+func (r *mongoUserRepo) Add(ctx context.Context, user *domain.User) (string, error) {
+
+	// Set new ObjectID
+	user.ID = primitive.NewObjectID()
+
+	result, err := r.coll.InsertOne(ctx, user)
 	if err != nil {
+		// Handle duplicate key errors
 		if we, ok := err.(mongo.WriteException); ok {
 			for _, e := range we.WriteErrors {
-				if e.Code == 1100 {
-					return domain.ErrEmailAlreadyExists
+				if e.Code == 11000 {
+					if e.Message != "" {
+						if strings.Contains(e.Message, "username") {
+							return "", domain.ErrUsernameAlreadyExists
+						} else if strings.Contains(e.Message, "email") {
+							return "", domain.ErrEmailAlreadyExists
+						}
+					}
+					return "", domain.ErrDuplicateKey
 				}
 			}
 		}
 
-		return domain.ErrInternalServerError
+		return "", domain.ErrInternalServerError
 	}
 
-	return nil
+	// Convert InsertedID to string
+	if oid, ok := result.InsertedID.(primitive.ObjectID); ok {
+		return oid.Hex(), nil
+	}
+
+	return "", domain.ErrInternalServerError
 }
+
 
 func (r *mongoUserRepo) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 
-	// Check for duplicate username
-	var user *domain.User
+	user := &domain.User{}
 	filter := bson.M{"email": email}
-	err := r.coll.FindOne(ctx, filter).Decode(&user)
+	err := r.coll.FindOne(ctx, filter).Decode(user)
 	if err != nil {
-		return nil, domain.ErrUserNotFound
-
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, domain.ErrUserNotFound
+		}
+		return nil, domain.ErrInternalServerError
 	}
 	return user, nil
 }
-
 func (r *mongoUserRepo) GetByUsername(ctx context.Context, username string) (*domain.User, error) {
 
-
-	var user *domain.User
+	user := &domain.User{}
 	filter := bson.M{"username": username}
-	err := r.coll.FindOne(ctx, filter).Decode(&user)
+	err := r.coll.FindOne(ctx, filter).Decode(user)
 	if err != nil {
-		return nil, domain.ErrUserNotFound
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, domain.ErrUserNotFound
+		}
+		return nil, domain.ErrInternalServerError
 	}
-
 	return user, nil
 }
 
