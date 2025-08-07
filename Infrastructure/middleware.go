@@ -4,17 +4,34 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gedyzed/blog-starter-project/Domain"
+	domain "github.com/gedyzed/blog-starter-project/Domain"
 	"github.com/gin-gonic/gin"
 )
 
 type AuthMiddleware struct {
-	tokenService domain.ITokenService
+	TokenService domain.ITokenService
 }
 
 func (m *AuthMiddleware) IsLogin(c *gin.Context) {
 	header := c.Request.Header["Authorization"]
-	token := strings.Split(header[0], " ")[1]
+	if len(header) == 0 {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{
+			"error": "missing authorization header",
+		})
+		c.Abort()
+		return
+	}
+
+	authHeader := header[0]
+	if !strings.HasPrefix(authHeader, "Bearer ") {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{
+			"error": "invalid authorization header format",
+		})
+		c.Abort()
+		return
+	}
+
+	token := strings.TrimPrefix(authHeader, "Bearer ")
 
 	if token == "" {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{
@@ -24,10 +41,10 @@ func (m *AuthMiddleware) IsLogin(c *gin.Context) {
 		return
 	}
 
-	user, err := m.tokenService.VerifyAccessToken(token)
+	user, err := m.TokenService.VerifyAccessToken(token)
 	if err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{
-			"errro": "invalid token",
+			"error": "invalid token",
 		})
 		c.Abort()
 		return

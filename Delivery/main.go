@@ -72,11 +72,15 @@ func main() {
 	commentHandler := controllers.NewCommentHandler(commentUsecase)
 	tokenHandler := controllers.NewTokenController(tokenUsecase)
 
+	// Setup middleware
+	authMiddleware := &infrastructure.AuthMiddleware{
+		TokenService: jwtService,
+	}
 	infrastructure.StartBlogRefreshWorker(ctx, blogUsecase)
 
 	r := gin.Default()
 
-	routers.RegisterBlogRoutes(r, blogHandler, commentHandler)
+	routers.RegisterBlogRoutes(r, blogHandler, commentHandler, authMiddleware)
 	routers.RegisterUserRoutes(r, userHandler)
 	routers.RegisterTokenRoutes(r, tokenHandler)
 

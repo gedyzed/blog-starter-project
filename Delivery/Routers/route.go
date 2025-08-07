@@ -4,29 +4,32 @@ import (
 	"github.com/gin-gonic/gin"
 
 	controllers "github.com/gedyzed/blog-starter-project/Delivery/Controllers"
+	infrastructure "github.com/gedyzed/blog-starter-project/Infrastructure"
 )
 
-func RegisterBlogRoutes(r *gin.Engine, blogHandler *controllers.BlogHandler, commentHandler *controllers.CommentHandler) {
+func RegisterBlogRoutes(r *gin.Engine, blogHandler *controllers.BlogHandler, commentHandler *controllers.CommentHandler, authMiddleware *infrastructure.AuthMiddleware) {
 	blog := r.Group("/blogs")
 	{
-		blog.POST("/", blogHandler.CreateBlog)
+		// Public routes
 		blog.GET("/", blogHandler.GetAllBlogs)
-		blog.GET("/:id", blogHandler.GetBlogById)
-		blog.PUT("/:id", blogHandler.UpdateBlog)
-		blog.DELETE("/:id", blogHandler.DeleteBlog)
-		blog.POST("/:id/like", blogHandler.LikeBlog)
-		blog.POST("/:id/dislike", blogHandler.DislikeBlog)
-		blog.GET("/filter", blogHandler.FilterBlogs )
+		blog.GET("/filter", blogHandler.FilterBlogs)
 		blog.GET("/search", blogHandler.SearchBlogs)
+		blog.GET("/:id", blogHandler.GetBlogById)
+
+		// Protected routes
+		blog.POST("/", authMiddleware.IsLogin, blogHandler.CreateBlog)
+		blog.PUT("/:id", authMiddleware.IsLogin, blogHandler.UpdateBlog)
+		blog.DELETE("/:id", authMiddleware.IsLogin, blogHandler.DeleteBlog)
+		blog.POST("/:id/like", authMiddleware.IsLogin, blogHandler.LikeBlog)
+		blog.POST("/:id/dislike", authMiddleware.IsLogin, blogHandler.DislikeBlog)
 	}
-  
 	comments := r.Group("/comments")
 	{
-		comments.POST("/:blogId", commentHandler.CreateComment)
+		comments.POST("/:blogId", authMiddleware.IsLogin, commentHandler.CreateComment)
 		comments.GET("/:blogId", commentHandler.GetAllComments)
 		comments.GET("/:blogId/:id", commentHandler.GetCommentByID)
-		comments.PUT("/:blogId/:id", commentHandler.EditComment)
-		comments.DELETE("/:blogId/:id", commentHandler.DeleteComment)
+		comments.PUT("/:blogId/:id", authMiddleware.IsLogin, commentHandler.EditComment)
+		comments.DELETE("/:blogId/:id", authMiddleware.IsLogin, commentHandler.DeleteComment)
 	}
 }
 

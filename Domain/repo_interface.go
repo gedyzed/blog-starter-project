@@ -9,15 +9,15 @@ type BlogRepository interface {
 	GetAllBlogs(ctx context.Context, page int, limit int, sort string) ([]Blog, int, error)
 	GetBlogByID(ctx context.Context, id string) (*Blog, error)
 	IncrementBlogViews(ctx context.Context, id string) error
-	CreateBlog(ctx context.Context, blog Blog) (*Blog, error)
+	CreateBlog(ctx context.Context, blog Blog, userID string) (*Blog, error)
 	UpdateBlog(ctx context.Context, id string, userID string, updatedBlog BlogUpdateInput) error
 	DeleteBlog(ctx context.Context, id string) error
 	LikeBlog(ctx context.Context, blogID string, userID string) error
 	DislikeBlog(ctx context.Context, blogID string, userID string) error
 	EnsureIndexes(ctx context.Context) error
 	UpdateStats(ctx context.Context, blogID string, score float64, commentCount int) error
-	FilterBlogs(ctx context.Context, startDate, endDate *time.Time,tags []string, sort string, page, limit int)([]Blog, int, error)
-	SearchBlogs(ctx context.Context, keyword string, limit, page int) ([]Blog, error)
+	FilterBlogs(ctx context.Context, startDate, endDate *time.Time, tags []string, sort string, page, limit int) ([]Blog, int, error)
+	SearchBlogs(ctx context.Context, keyword string, limit, page int) ([]Blog, int, error)
 }
 
 type CommentRepository interface {
