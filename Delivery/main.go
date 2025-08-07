@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"time"
 
 	controllers "github.com/gedyzed/blog-starter-project/Delivery/Controllers"
