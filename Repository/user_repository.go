@@ -6,12 +6,11 @@ import (
 	"strings"
 	"time"
 
-	domain "github.com/gedyzed/blog-starter-project/Domain"
+	"github.com/gedyzed/blog-starter-project/Domain"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
-
 
 type mongoUserRepo struct {
 	coll *mongo.Collection
@@ -44,7 +43,7 @@ func (r *mongoUserRepo) Add(ctx context.Context, user *domain.User) (string, err
 			}
 		}
 
-		return "", domain.ErrInternalServerError
+		return "", domain.ErrInternalServer
 	}
 
 	// Convert InsertedID to string
@@ -52,7 +51,7 @@ func (r *mongoUserRepo) Add(ctx context.Context, user *domain.User) (string, err
 		return oid.Hex(), nil
 	}
 
-	return "", domain.ErrInternalServerError
+	return "", domain.ErrInternalServer
 }
 
 
@@ -65,8 +64,9 @@ func (r *mongoUserRepo) GetByEmail(ctx context.Context, email string) (*domain.U
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, domain.ErrUserNotFound
 		}
-		return nil, domain.ErrInternalServerError
+		return nil, domain.ErrInternalServer
 	}
+
 	return user, nil
 }
 func (r *mongoUserRepo) GetByUsername(ctx context.Context, username string) (*domain.User, error) {
@@ -78,7 +78,7 @@ func (r *mongoUserRepo) GetByUsername(ctx context.Context, username string) (*do
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, domain.ErrUserNotFound
 		}
-		return nil, domain.ErrInternalServerError
+		return nil, domain.ErrInternalServer
 	}
 	return user, nil
 }
@@ -90,7 +90,7 @@ func (r *mongoUserRepo) Update(ctx context.Context, filterField, filterValue str
     case "_id":
         objID, err := primitive.ObjectIDFromHex(filterValue)
         if err != nil {
-            return domain.ErrInternalServerError
+            return domain.ErrInternalServer
         }
         filter = bson.M{"_id": objID}
     default:
@@ -137,17 +137,16 @@ func (r *mongoUserRepo) Update(ctx context.Context, filterField, filterValue str
 
     _, err := r.coll.UpdateOne(ctx, filter, update)
     if err != nil {
-        return domain.ErrInternalServerError
+        return domain.ErrInternalServer
     }
 
     return nil
 }
 
 func (r *mongoUserRepo) Delete(ctx context.Context, id string) error {
-
 	result, err := r.coll.DeleteOne(ctx, bson.D{{Key: "_id", Value: id}})
 	if err != nil {
-		return domain.ErrInternalServerError
+		return domain.ErrInternalServer
 	}
 
 	if result.DeletedCount == 0 {
@@ -157,25 +156,23 @@ func (r *mongoUserRepo) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (r *mongoUserRepo) Get(ctx context.Context, id string) (*domain.User, error){
-
+func (r *mongoUserRepo) Get(ctx context.Context, id string) (*domain.User, error) {
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return nil, domain.ErrIncorrectUserID
+		return nil, domain.ErrInvalidUserID
 	}
 
 	query := bson.M{"_id": objID}
 	result := r.coll.FindOne(ctx, query)
-	if errors.Is(result.Err(), mongo.ErrNoDocuments){
-		return nil, domain.ErrIncorrectUserID
+	if errors.Is(result.Err(), mongo.ErrNoDocuments) {
+		return nil, domain.ErrUserNotFound
 	}
 
-	var existing *domain.User
-	err = result.Decode(&existing)
+	var user *domain.User
+	err = result.Decode(&user)
 	if err != nil {
-		return nil, domain.ErrInternalServerError
+		return nil, domain.ErrInternalServer
 	}
-	
-	return existing, nil
-}
 
+	return user, nil
+}

@@ -3,10 +3,10 @@ package usecases
 import (
 	"context"
 	"errors"
+	"log"
 	"time"
 
-	domain "github.com/gedyzed/blog-starter-project/Domain"
-	repository "github.com/gedyzed/blog-starter-project/Repository"
+	"github.com/gedyzed/blog-starter-project/Domain"
 )
 
 var (
@@ -20,6 +20,7 @@ var (
 
 	// input errors
 	ErrInvalidCredential = errors.New("invalid email or passwrod")
+	ErrUserNotFound      = errors.New("user not found")
 )
 
 type UserUsecases struct {
@@ -37,14 +38,15 @@ func NewUserUsecase(userRepo domain.IUserRepository, tu ITokenUsecase, ps domain
 }
 
 func (u *UserUsecases) Login(ctx context.Context, user domain.User) (*domain.Token, error) {
-	data, err := u.userRepo.Get(ctx, user.Username)
+	data, err := u.userRepo.GetByUsername(ctx, user.Username)
 
 	if err != nil {
 		switch err {
 		case domain.ErrUserNotFound:
-			return nil, ErrInvalidCredential
+			return nil, err
 		default:
-			return nil, domain.ErrInternalServerError
+			log.Println(err.Error())
+			return nil, domain.ErrInternalServer
 		}
 	}
 
@@ -59,7 +61,8 @@ func (u *UserUsecases) Login(ctx context.Context, user domain.User) (*domain.Tok
 	id := user.ID.Hex()
 	token, err := u.tokenUsecase.GenerateTokens(ctx, id)
 	if err != nil {
-		return nil, domain.ErrInternalServerError
+		log.Println(err.Error())
+		return nil, domain.ErrInternalServer
 	}
 
 	return token, nil
@@ -68,7 +71,7 @@ func (u *UserUsecases) Login(ctx context.Context, user domain.User) (*domain.Tok
 func (u *UserUsecases) Authenticate(ctx context.Context, token string) (*domain.User, error) {
 	userID, err := u.tokenUsecase.VerifyAccessToken(token)
 	if err != nil {
-		return nil, domain.ErrUserNotFound
+		return nil, err
 	}
 
 	user, err := u.userRepo.Get(ctx, userID)
@@ -77,7 +80,7 @@ func (u *UserUsecases) Authenticate(ctx context.Context, token string) (*domain.
 			return nil, domain.ErrUserNotFound
 		}
 
-		return nil, domain.ErrInternalServerError
+		return nil, domain.ErrInternalServer
 	}
 
 	return user, nil
@@ -87,9 +90,6 @@ func (u *UserUsecases) RefreshToken(ctx context.Context, id string, refreshToken
 
 	token, err := u.tokenUsecase.FindByUserID(ctx, id)
 	if err != nil {
-		if errors.Is(err, repository.ErrTokenNotFound) {
-			return nil, ErrInvalidCredential
-		}
 		return nil, err
 	}
 
@@ -120,7 +120,7 @@ func (u *UserUsecases) Register(ctx context.Context, user *domain.User) (string,
 	// Check email uniqueness
 	existing, err := u.userRepo.GetByEmail(ctx, user.Email)
 	if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
-		return "", domain.ErrInternalServerError
+		return "", domain.ErrInternalServer
 	}
 	if existing != nil {
 		return "", domain.ErrEmailAlreadyExists
@@ -131,7 +131,7 @@ func (u *UserUsecases) Register(ctx context.Context, user *domain.User) (string,
 	if user.Username != "" {
 		existing, err = u.userRepo.GetByUsername(ctx, user.Username)
 		if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
-			return "", domain.ErrInternalServerError
+			return "", domain.ErrInternalServer
 		}
 		if existing != nil {
 			return "", domain.ErrUsernameAlreadyExists
@@ -142,7 +142,7 @@ func (u *UserUsecases) Register(ctx context.Context, user *domain.User) (string,
 	if user.Provider == "local" {
 		user.Password, err = u.passwordService.Hash(user.Password)
 		if err != nil {
-			return "", domain.ErrInternalServerError
+			return "", domain.ErrInternalServer
 		}
 	} else {
 		user.Password = ""
@@ -170,13 +170,12 @@ func (u *UserUsecases) ForgotPassword(ctx context.Context, email string) error {
 	// check if a user already exist
 	_, err := u.userRepo.GetByEmail(ctx, email)
 	if err != nil {
-		if errors.Is(err, domain.ErrInternalServerError) {
-			return domain.ErrInternalServerError
+		if errors.Is(err, domain.ErrInternalServer) {
+			return domain.ErrInternalServer
 		}
 
 		return domain.ErrUserNotFound
 	}
-
 
 	return u.tokenUsecase.CreateSendVCode(ctx, email, Password_Reset)
 }
@@ -185,7 +184,7 @@ func (u *UserUsecases) ResetPassword(ctx context.Context, email string, password
 
 	password, err := u.passwordService.Hash(password)
 	if err != nil {
-		return domain.ErrInternalServerError
+		return domain.ErrInternalServer
 	}
 
 	return u.userRepo.Update(ctx, "email", email, &domain.User{Password: password})
@@ -195,7 +194,12 @@ func (u *UserUsecases) PromoteDemote(ctx context.Context, userID string) error {
 
 	existing, err := u.userRepo.Get(ctx, userID)
 	if err != nil {
-		return domain.ErrIncorrectUserID
+		switch err {
+		case domain.ErrUserNotFound:
+			return err
+		default:
+			return domain.ErrInternalServer
+		}
 	}
 
 	user := &domain.User{}
@@ -210,7 +214,7 @@ func (u *UserUsecases) PromoteDemote(ctx context.Context, userID string) error {
 
 func (u *UserUsecases) ProfileUpdate(ctx context.Context, profileUpdate *domain.ProfileUpdateInput) error {
 
-	existing, err := u.userRepo.Get(ctx, profileUpdate.UserID) 
+	existing, err := u.userRepo.Get(ctx, profileUpdate.UserID)
 	if err != nil {
 		return err
 	}

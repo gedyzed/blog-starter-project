@@ -15,10 +15,15 @@ import (
 
 type commentRepository struct {
 	collection *mongo.Collection
+	blogCollection *mongo.Collection
+
 }
 
-func NewCommentRepository(collection *mongo.Collection) domain.CommentRepository {
-	return &commentRepository{collection: collection}
+func NewCommentRepository(commentCollection, blogCollection *mongo.Collection) domain.CommentRepository {
+    return &commentRepository{
+        collection: commentCollection,
+        blogCollection:    blogCollection,
+    }
 }
 
 
@@ -41,6 +46,12 @@ func (r *commentRepository) CreateComment(ctx context.Context, blogID string, us
 	if err != nil {
 		return nil, fmt.Errorf("failed to insert comment: %w", err)
 	}
+	update := bson.M{"$inc": bson.M{"comments_count": 1}}
+	_, err = r.blogCollection.UpdateByID(ctx, blogObjID, update)
+	if err != nil {
+		return nil, fmt.Errorf("failed to increment comment count: %w", err)
+	}
+
 	return &comment, nil
 }
 
@@ -157,5 +168,34 @@ func (r *commentRepository) DeleteComment(ctx context.Context, blogID string, id
 	if res.DeletedCount == 0 {
 		return errors.New("no matching comment found")
 	}
+	update := bson.M{"$inc": bson.M{"comments_count": -1}}
+	_, err = r.blogCollection.UpdateByID(ctx, blogObjID, update)
+	if err != nil {
+		return fmt.Errorf("failed to decrement comment count: %w", err)
+	}
+
 	return nil
+}
+
+func (r *commentRepository) CountCommentsByBlogID(ctx context.Context, id string) (int, error) {
+	blogID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return 0,fmt.Errorf("invalid comment ID: %w", err)
+	}
+	count, err := r.collection.CountDocuments(ctx, bson.M{"blog_id": blogID})
+	if err != nil {
+		return 0, fmt.Errorf("count comments failed: %w", err)
+	}
+	return int(count), nil
+}
+
+func (r *commentRepository) EnsureIndexes(ctx context.Context) error {
+    indexModels := []mongo.IndexModel{
+        {
+            Keys: bson.D{{Key: "blog_id", Value: 1}}, // for counting comments
+        },
+    }
+
+    _, err := r.collection.Indexes().CreateMany(ctx, indexModels)
+    return err
 }

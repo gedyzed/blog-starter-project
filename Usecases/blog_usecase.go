@@ -5,16 +5,23 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"time"
 
 	domain "github.com/gedyzed/blog-starter-project/Domain"
 )
 
 type blogUsecase struct {
-	blogRepo domain.BlogRepository
+	blogRepo    domain.BlogRepository
+	commentRepo domain.CommentRepository
+	dispatcher  domain.BlogRefreshDispatcher
 }
 
-func NewBlogUsecase(repo domain.BlogRepository) domain.BlogUsecase {
-	return &blogUsecase{blogRepo: repo}
+func NewBlogUsecase(repo domain.BlogRepository, commentRepo domain.CommentRepository, dispatcher domain.BlogRefreshDispatcher) domain.BlogUsecase {
+	return &blogUsecase{
+		blogRepo:    repo,
+		commentRepo: commentRepo,
+		dispatcher:  dispatcher,
+	}
 }
 
 func (uc *blogUsecase) GetAllBlogs(ctx context.Context, page int, limit int, sort string) (*domain.PaginatedBlogResponse, error) {
@@ -37,12 +44,13 @@ func (uc *blogUsecase) GetAllBlogs(ctx context.Context, page int, limit int, sor
 	}, nil
 }
 
-func (uc *blogUsecase) GetBlogByID(ctx context.Context, id string) (*domain.Blog, error) {
+func (uc *blogUsecase) ViewBlog(ctx context.Context, id string) (*domain.Blog, error) {
 	blog, err := uc.blogRepo.GetBlogByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	_ = uc.blogRepo.IncrementBlogViews(ctx, id)
+	uc.dispatcher.Enqueue(id)
 	return blog, nil
 }
 
@@ -82,6 +90,7 @@ func (uc *blogUsecase) LikeBlog(ctx context.Context, blogID string, userID strin
 	if err != nil {
 		return fmt.Errorf("failed to like: %w", err)
 	}
+	uc.dispatcher.Enqueue(blogID)
 	return nil
 }
 
@@ -96,5 +105,71 @@ func (uc *blogUsecase) DislikeBlog(ctx context.Context, blogID string, userID st
 	if err != nil {
 		return fmt.Errorf("failed to dislike: %w", err)
 	}
+	uc.dispatcher.Enqueue(blogID)
 	return nil
+}
+
+func (uc *blogUsecase) RefreshPopularity(ctx context.Context, blogID string) error {
+	blog, err := uc.blogRepo.GetBlogByID(ctx, blogID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch blog: %w", err)
+	}
+
+	counts, err := uc.commentRepo.CountCommentsByBlogID(ctx, blogID)
+	if err != nil {
+		return err
+	}
+
+	score := CalculateScore(blog.ViewCount, blog.Likes, blog.Dislikes, counts)
+	return uc.blogRepo.UpdateStats(ctx, blogID, score, counts)
+}
+
+func(uc *blogUsecase)FilterBlogs(ctx context.Context, tags []string, startDate, endDate *time.Time, sortBy string, page int, limit int) (*domain.PaginatedBlogResponse, error){
+	
+	if startDate != nil && endDate != nil && endDate.Before(*startDate) {
+		return nil, errors.New("toDate cannot be before fromDate")
+	}
+
+	validSort := map[string]bool{"popular": true, "oldest": true, "": true}
+	if !validSort[sortBy]{
+		return nil, errors.New("invalid sort format ")
+	}
+	
+	if limit > 100 {
+		limit = 100
+	}
+
+	blogs, totalCount, err := uc.blogRepo.FilterBlogs(ctx, startDate, endDate, tags, sortBy, page, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get blogs: %w", err)
+	}
+
+	totalPages := int(math.Ceil(float64(totalCount) / float64(limit)))
+
+	return &domain.PaginatedBlogResponse{
+		Blogs:       blogs,
+		TotalCount:  totalCount,
+		TotalPages:  totalPages,
+		CurrentPage: page,
+	}, nil
+	
+}
+
+//Helper function
+
+func CalculateScore(views, likes, dislikes, comments int) float64 {
+	return float64(views)*0.5 + float64(likes)*2 - float64(dislikes)*1 + float64(comments)*1.5
+}
+
+func (uc *blogUsecase) SearchBlogs(ctx context.Context, query string, page int) ([]domain.Blog, error) {
+	if page < 1 {
+		page = 1
+	}
+	const limit = 10
+
+	blogs, err := uc.blogRepo.SearchBlogs(ctx, query, limit, page)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search blogs: %w", err)
+	}
+	return blogs, nil
 }

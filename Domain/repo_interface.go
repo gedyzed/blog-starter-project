@@ -1,6 +1,9 @@
 package domain
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 type BlogRepository interface {
 	GetAllBlogs(ctx context.Context, page int, limit int, sort string) ([]Blog, int, error)
@@ -11,6 +14,10 @@ type BlogRepository interface {
 	DeleteBlog(ctx context.Context, id string) error
 	LikeBlog(ctx context.Context, blogID string, userID string) error
 	DislikeBlog(ctx context.Context, blogID string, userID string) error
+	EnsureIndexes(ctx context.Context) error
+	UpdateStats(ctx context.Context, blogID string, score float64, commentCount int) error
+	FilterBlogs(ctx context.Context, startDate, endDate *time.Time,tags []string, sort string, page, limit int)([]Blog, int, error)
+	SearchBlogs(ctx context.Context, keyword string, limit, page int) ([]Blog, error)
 }
 
 type CommentRepository interface {
@@ -19,8 +26,8 @@ type CommentRepository interface {
 	GetCommentByID(ctx context.Context, blogID string, id string) (*Comment, error)
 	EditComment(ctx context.Context, blogID string, id string, userID string, message string) error
 	DeleteComment(ctx context.Context, blogID string, id string, userID string) error
+	CountCommentsByBlogID(ctx context.Context, id string) (int, error)
 }
-
 
 type IUserRepository interface {
 
@@ -28,8 +35,8 @@ type IUserRepository interface {
 	Update(ctx context.Context, filterField, filterValue string, user *User) error
 	Delete(ctx context.Context, id string) error
 	Get(ctx context.Context, id string) (*User, error)
-	GetByEmail(ctx context.Context, email string)(*User, error)
-	GetByUsername(ctx context.Context, username string)(*User, error)
+	GetByEmail(ctx context.Context, email string) (*User, error)
+	GetByUsername(ctx context.Context, username string) (*User, error)
 }
 
 type ITokenRepo interface{
@@ -41,8 +48,7 @@ type ITokenRepo interface{
 type IVTokenRepo interface {
 	CreateVCode(ctx context.Context, token *VToken) error
 	DeleteVCode(ctx context.Context, id string) error
-	GetVCode(ctx context.Context, id string)(*VToken, error)
-
+	GetVCode(ctx context.Context, id string) (*VToken, error)
 }
 
 type IPasswordService interface {
@@ -59,4 +65,3 @@ type ITokenService interface {
 	VerifyAccessToken(string) (string, error)
 	RefreshTokens(ctx context.Context, refreshToken string) (*Token, error)
 }
-

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"time"
 
 	controllers "github.com/gedyzed/blog-starter-project/Delivery/Controllers"
@@ -26,6 +28,8 @@ func main() {
 
 	db := infrastructure.DbInit(conf.Mongo.URL)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	// setup collections
 	blogCollection := db.Collection("blogs")
 	commentCollection := db.Collection("comments")
@@ -38,8 +42,14 @@ func main() {
 	vtokenRepo := repository.NewMongoVTokenRepository(vtokenCollection)
 	userRepo := repository.NewMongoUserRepo(userCollection)
 	blogRepo := repository.NewBlogRepository(blogCollection)
-	commentRepo := repository.NewCommentRepository(commentCollection)
+	commentRepo := repository.NewCommentRepository(commentCollection, blogCollection)
 
+	//to initialize the indexes
+	if err := blogRepo.EnsureIndexes(context.Background()); err != nil {
+		log.Fatalf("Failed to create indexes: %v", err)
+	}
+
+	dispatcher := infrastructure.NewBlogQueue()
 	// Setup services
 	passService := infrastructure.NewPasswordService()
 	tokenService := infrastructure.NewTokenService(conf.Email, conf.App.URL)
@@ -51,13 +61,12 @@ func main() {
 		60*(24*time.Hour), // 2 month
 	)
 
-
 	// Setup usecases
 	tokenUsecase := usecases.NewTokenUsecase(tokenRepo, vtokenRepo, tokenService, jwtService)
 	userUsecase := usecases.NewUserUsecase(userRepo, tokenUsecase, passService)
-	blogUsecase := usecases.NewBlogUsecase(blogRepo)
-	commentUsecase := usecases.NewCommentUsecase(commentRepo)
-	
+
+	blogUsecase := usecases.NewBlogUsecase(blogRepo, commentRepo, dispatcher)
+	commentUsecase := usecases.NewCommentUsecase(commentRepo, dispatcher)
 
 	// Setup handlers
 	userHandler := controllers.NewUserController(userUsecase)
@@ -66,6 +75,8 @@ func main() {
 	tokenHandler := controllers.NewTokenController(tokenUsecase)
 	oAuthHandler := controllers.NewOAuthController(googleOauthConfig, userUsecase)
 
+
+	infrastructure.StartBlogRefreshWorker(ctx, blogUsecase)
 
 	r := gin.Default()
 

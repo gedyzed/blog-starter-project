@@ -28,7 +28,7 @@ func (r *blogRepository) GetAllBlogs(ctx context.Context, page int, limit int, s
 	findOptions := options.Find().SetSkip(skip).SetLimit(int64(limit))
 	switch sort {
 	case "popular":
-		findOptions.SetSort(bson.D{{Key: "view_count", Value: -1}})
+		findOptions.SetSort(bson.D{{Key: "popularity_score", Value: -1}})
 	case "oldest":
 		findOptions.SetSort(bson.D{{Key: "created", Value: 1}})
 	default:
@@ -226,4 +226,129 @@ func (r *blogRepository) DislikeBlog(ctx context.Context, id string, userID stri
 		},
 	)
 	return err
+}
+
+func (r *blogRepository) EnsureIndexes(ctx context.Context) error {
+	indexModels := []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "title", Value: "text"},
+				{Key: "content", Value: "text"},
+				{Key: "author", Value: "text"},
+			},
+			Options: options.Index().SetDefaultLanguage("english"),
+		},
+		{Keys: bson.D{{Key: "created", Value: -1}}},
+		{
+			Keys: bson.D{{Key: "view_count", Value: -1}},
+		},
+		{
+			Keys: bson.D{{Key: "popularity_score", Value: -1}},
+		},
+		{
+			Keys: bson.D{{Key: "tags", Value: 1}},
+		},
+	}
+	_, err := r.collection.Indexes().CreateMany(ctx, indexModels)
+	return err
+}
+
+func (r *blogRepository) UpdateStats(ctx context.Context, blogID string, score float64, commentCount int) error {
+	objID, err := primitive.ObjectIDFromHex(blogID)
+	if err != nil {
+		return fmt.Errorf("invalid blog id: %w", err)
+	}
+	update := bson.M{
+		"$set": bson.M{
+			"popularity_score": score,
+			"comment_count":    commentCount,
+		},
+	}
+	_, err = r.collection.UpdateByID(ctx, objID, update)
+	if err != nil {
+		return fmt.Errorf("failed to update popularity statistics: %w", err)
+	}
+	return nil
+
+}
+
+
+func(r *blogRepository) FilterBlogs(ctx context.Context, startDate, endDate *time.Time,tags []string, sort string, page, limit int)([]domain.Blog, int, error){
+	filter := bson.M{}
+	if len(tags) >0{
+		filter["tags"] = bson.M{"$in": tags}
+	}
+	dateFilter := bson.M{}
+	if startDate != nil{
+		dateFilter["$gte"] = *startDate
+	}
+	if endDate != nil{
+		dateFilter["$lte"] = *endDate
+	}
+	if len(dateFilter) >0{
+		filter["created"] = dateFilter
+	}
+
+	skip := int64((page - 1) * limit)
+	findOptions := options.Find()
+	findOptions.SetSkip(skip)             
+	findOptions.SetLimit(int64(limit)) 
+	
+	switch sort {
+	case "popular":
+		findOptions.SetSort(bson.D{{Key: "popularity_score", Value: -1}})
+	case "oldest":
+		findOptions.SetSort(bson.D{{Key: "created", Value: 1}})
+	default:
+		findOptions.SetSort(bson.D{{Key: "created", Value: -1}})
+	}
+
+	var blogs []domain.Blog
+	
+	cursor, err := r.collection.Find(ctx, filter, findOptions)
+	
+	if err != nil{
+		return nil,0, fmt.Errorf("failed fetching blogs: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	if err := cursor.All(ctx, &blogs); err != nil{
+		return nil, 0, fmt.Errorf("failed decoding blogs: %w", err)
+	}
+
+	total, err := r.collection.CountDocuments(ctx, filter)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed counting blogs: %w", err)
+	}
+
+	return blogs, int(total), nil
+}
+
+func (r *blogRepository) SearchBlogs(ctx context.Context, query string, limit, page int) ([]domain.Blog, error) {
+	skip := (page - 1) * limit
+
+	filter := bson.M{
+		"$text": bson.M{
+			"$search": query,
+		},
+	}
+
+	findOptions := options.Find()
+	findOptions.SetProjection(bson.M{"score": bson.M{"$meta": "textScore"}})
+	findOptions.SetSort(bson.D{{Key: "score", Value: bson.M{"$meta": "textScore"}}})
+	findOptions.SetSkip(int64(skip))
+	findOptions.SetLimit(int64(limit))
+
+	cursor, err := r.collection.Find(ctx, filter, findOptions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search blogs: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	var blogs []domain.Blog
+	if err := cursor.All(ctx, &blogs); err != nil {
+		return nil, fmt.Errorf("failed to decode blogs: %w", err)
+	}
+
+	return blogs, nil
 }
