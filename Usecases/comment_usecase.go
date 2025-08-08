@@ -38,7 +38,7 @@ func (uc *commentUsecase) CreateComment(ctx context.Context, blogID string, user
 	return uc.commentRepo.CreateComment(ctx, blogID, userID, comment)
 }
 
-func (uc *commentUsecase) GetAllComments(ctx context.Context, blogID string, page int, limit int, sort string) ([]domain.Comment, int, error) {
+func (uc *commentUsecase) GetAllComments(ctx context.Context, blogID string, page int, limit int, sort string) ([]*domain.Comment, int, error) {
 	if page <= 0 {
 		page = 1
 	}

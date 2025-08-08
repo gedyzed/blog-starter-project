@@ -21,7 +21,7 @@ type BlogUsecase interface {
 
 type CommentUsecase interface {
 	CreateComment(ctx context.Context, blogID string, userID string, message string) (*Comment, error)
-	GetAllComments(ctx context.Context, blogID string, page int, limit int, sort string) ([]Comment, int, error)
+	GetAllComments(ctx context.Context, blogID string, page int, limit int, sort string) ([]*Comment, int, error)
 	GetCommentByID(ctx context.Context, blogID string, commentID string) (*Comment, error)
 	EditComment(ctx context.Context, blogID string, commentID string, userID string, message string) error
 	DeleteComment(ctx context.Context, blogID string, commentID string, userID string) error

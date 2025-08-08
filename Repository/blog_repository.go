@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	domain "github.com/gedyzed/blog-starter-project/Domain"
@@ -16,16 +17,34 @@ import (
 type blogRepository struct {
 	collection     *mongo.Collection
 	userRepository domain.IUserRepository
+	blogCache     domain.Cache[*domain.Blog]
+	sortedCache	  domain.Cache[[]domain.Blog]
 }
 
-func NewBlogRepository(coll *mongo.Collection, userRepository domain.IUserRepository) domain.BlogRepository {
+func NewBlogRepository(coll *mongo.Collection, userRepository domain.IUserRepository, blogCache domain.Cache[*domain.Blog], sorted domain.Cache[[]domain.Blog]) domain.BlogRepository {
 	return &blogRepository{
 		collection:     coll,
 		userRepository: userRepository,
+		blogCache: blogCache,
+		sortedCache: sorted,
 	}
 }
 
 func (r *blogRepository) GetAllBlogs(ctx context.Context, page int, limit int, sort string) ([]domain.Blog, int, error) {
+	sortKey := sort
+	if sortKey == "" {
+    	sortKey = "latest"
+	}
+	
+	cacheKey := fmt.Sprintf("blogs:%s:%d:%d",sortKey, page, limit)
+	
+	if cachedBlogs,found := r.sortedCache.Get(cacheKey); found{
+		log.Println("Cache HIT for blogs for:", cacheKey)
+		return cachedBlogs, len(cachedBlogs), nil
+	}
+		 
+	
+
 	var blogs []domain.Blog
 	skip := int64((page - 1) * limit)
 
@@ -53,11 +72,16 @@ func (r *blogRepository) GetAllBlogs(ctx context.Context, page int, limit int, s
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count blogs: %w", err)
 	}
-
+	r.sortedCache.Set(cacheKey, blogs)
 	return blogs, int(totalCount), nil
 }
 
 func (r *blogRepository) GetBlogByID(ctx context.Context, id string) (*domain.Blog, error) {
+	if blog, found := r.blogCache.Get(id); found{
+		log.Println("cache hit for getting blog by ID")
+		return blog, nil
+	}
+
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return nil, fmt.Errorf("invalid blog id: %w", err)
@@ -69,6 +93,7 @@ func (r *blogRepository) GetBlogByID(ctx context.Context, id string) (*domain.Bl
 		return nil, fmt.Errorf("blog not found: %w", err)
 	}
 
+	r.blogCache.Set(id, &blog)
 	return &blog, nil
 }
 

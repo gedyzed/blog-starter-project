@@ -28,6 +28,14 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	
+	cacheSize := 100
+	lruCache, err := infrastructure.NewLRUCache(cacheSize)
+	if err != nil{
+        log.Fatalf("Failed to initialize LRU cache: %v", err)
+    }
+	
+
 	// setup collections
 	blogCollection := db.Collection("blogs")
 	commentCollection := db.Collection("comments")
@@ -39,8 +47,9 @@ func main() {
 	tokenRepo := repository.NewMongoTokenRepository(tokenCollection)
 	vtokenRepo := repository.NewMongoVTokenRepository(vtokenCollection)
 	userRepo := repository.NewMongoUserRepo(userCollection)
-	blogRepo := repository.NewBlogRepository(blogCollection, userRepo)
-	commentRepo := repository.NewCommentRepository(commentCollection, blogCollection, userRepo)
+
+	blogRepo := repository.NewBlogRepository(blogCollection, userRepo, lruCache.BlogCache(), lruCache. SortedBlogsCache())
+	commentRepo := repository.NewCommentRepository(commentCollection, blogCollection, userRepo,  lruCache.CommentCache())
 
 	//to initialize the indexes
 	if err := blogRepo.EnsureIndexes(context.Background()); err != nil {

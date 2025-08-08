@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	domain "github.com/gedyzed/blog-starter-project/Domain"
@@ -17,13 +18,15 @@ type commentRepository struct {
 	collection     *mongo.Collection
 	blogCollection *mongo.Collection
 	userRepository domain.IUserRepository
+	commentCache	domain.Cache[[]*domain.Comment]
 }
 
-func NewCommentRepository(commentCollection, blogCollection *mongo.Collection, userRepository domain.IUserRepository) domain.CommentRepository {
+func NewCommentRepository(commentCollection, blogCollection *mongo.Collection, userRepository domain.IUserRepository,commentCache domain.Cache[[]*domain.Comment]) domain.CommentRepository {
 	return &commentRepository{
 		collection:     commentCollection,
 		blogCollection: blogCollection,
 		userRepository: userRepository,
+		commentCache: commentCache,
 	}
 }
 
@@ -61,8 +64,13 @@ func (r *commentRepository) CreateComment(ctx context.Context, blogID string, us
 	return &comment, nil
 }
 
-func (r *commentRepository) GetAllComments(ctx context.Context, blogID string, page int, limit int, sort string) ([]domain.Comment, int, error) {
-	var comments []domain.Comment
+func (r *commentRepository) GetAllComments(ctx context.Context, blogID string, page int, limit int, sort string) ([]*domain.Comment, int, error) {
+	if comments,found := r.commentCache.Get(blogID); found{
+		log.Println("cache hit for getting all comments")
+		return comments,len(comments), nil
+	}
+	
+	var comments []*domain.Comment
 
 	skip := int64((page - 1) * limit)
 	findOptions := options.Find().SetSkip(skip).SetLimit(int64(limit))
@@ -96,6 +104,7 @@ func (r *commentRepository) GetAllComments(ctx context.Context, blogID string, p
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count comments: %w", err)
 	}
+	r.commentCache.Set(blogID,comments)
 
 	return comments, int(totalCount), nil
 }

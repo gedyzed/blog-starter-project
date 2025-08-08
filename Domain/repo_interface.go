@@ -22,12 +22,23 @@ type BlogRepository interface {
 
 type CommentRepository interface {
 	CreateComment(ctx context.Context, blogID string, userID string, comment Comment) (*Comment, error)
-	GetAllComments(ctx context.Context, blogID string, page int, limit int, sort string) ([]Comment, int, error)
+	GetAllComments(ctx context.Context, blogID string, page int, limit int, sort string) ([]*Comment, int, error)
 	GetCommentByID(ctx context.Context, blogID string, id string) (*Comment, error)
 	EditComment(ctx context.Context, blogID string, id string, userID string, message string) error
 	DeleteComment(ctx context.Context, blogID string, id string, userID string) error
 	DeleteCommentByID(ctx context.Context, blogID string, commentID string) error
 	CountCommentsByBlogID(ctx context.Context, id string) (int, error)
+}
+
+type Cache[T any] interface{
+	Get(key string) (T, bool)
+    Set(key string, value T)
+}
+
+type BlogCache interface{
+	BlogCache() Cache[*Blog]
+    CommentCache() Cache[[]*Comment]
+	SortedBlogsCache() Cache[[]Blog]
 }
 
 type IUserRepository interface {
