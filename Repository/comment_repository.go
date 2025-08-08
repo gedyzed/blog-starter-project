@@ -46,7 +46,7 @@ func (r *commentRepository) CreateComment(ctx context.Context, blogID string, us
 	comment.ID = primitive.NewObjectID()
 	comment.BlogID = blogObjID
 	comment.UserID = userObjID
-	comment.FirstName = user.Firstname
+	comment.AuthorName = fmt.Sprintf("%s %s", user.Firstname, user.Lastname)
 
 	_, err = r.collection.InsertOne(ctx, comment)
 	if err != nil {
