@@ -6,6 +6,7 @@ import (
 
 	"github.com/gedyzed/blog-starter-project/Domain"
 	"github.com/golang-jwt/jwt/v5"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type JWTTokenService struct {
@@ -64,8 +65,12 @@ func (s *JWTTokenService) GenerateTokens(ctx context.Context, userID string) (*d
 		return nil, err
 	}
 
+	objID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		return nil, domain.ErrInvalidUserID
+	}
 	tokens := domain.Token{
-		UserID:        userID,
+		UserID:        objID,
 		AccessToken:   accessToken,
 		RefreshToken:  refreshToken,
 		AccessExpiry:  time.Now().Add(s.accessTTL),
