@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"time"
+
 )
 
 type BlogRepository interface {
@@ -43,6 +44,7 @@ type ITokenRepo interface{
 	Save(ctx context.Context, tokens *Token) error
 	FindByUserID(ctx context.Context, userID string) (*Token, error)
 	DeleteByUserID(ctx context.Context, userID string) error
+	FindByAccessToken (ctx context.Context, accessToken string) (string, error)
 }
 
 type IVTokenRepo interface {
@@ -65,3 +67,12 @@ type ITokenService interface {
 	VerifyAccessToken(string) (string, error)
 	RefreshTokens(ctx context.Context, refreshToken string) (*Token, error)
 }
+
+type IOAuthServices interface {
+	VerifyGoogleIDToken(ctx context.Context, token string) (string, error)
+	RefreshToken(ctx context.Context, token *Token)(*Token, error)
+	ResolveUserID(ctx context.Context, email string)(string, error)
+	OAuthCallBack(ctx context.Context, code string) (*Token, error)
+	
+}
+

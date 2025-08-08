@@ -156,6 +156,13 @@ type UserInfo struct {
     Locale        string `json:"locale"`
 }
 
+// data returned from google's auth verifier
+type OAuthUser struct {
+	ID    string
+	Email string
+	Name  string
+}
+
 
 
 

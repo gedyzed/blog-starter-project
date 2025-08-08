@@ -52,40 +52,46 @@ func main() {
 	dispatcher := infrastructure.NewBlogQueue()
 	// Setup services
 	passService := infrastructure.NewPasswordService()
-	tokenService := infrastructure.NewTokenService(conf.Email, conf.App.URL)
-	jwtService := infrastructure.NewJWTTokenService(
+	vtokenService := infrastructure.NewTokenService(conf.Email, conf.App.URL)
+	tokenService := infrastructure.NewJWTTokenService(
 		tokenRepo,
 		conf.Auth.AccessTokenKey,
 		conf.Auth.RefreshTokenKey,
 		30*(24*time.Hour), // 1 month
 		60*(24*time.Hour), // 2 month
 	)
+	
 
 	// Setup usecases
-	tokenUsecase := usecases.NewTokenUsecase(tokenRepo, vtokenRepo, tokenService, jwtService)
+	tokenUsecase := usecases.NewTokenUsecase(tokenRepo, vtokenRepo, vtokenService, tokenService)
 	userUsecase := usecases.NewUserUsecase(userRepo, tokenUsecase, passService)
 
 	blogUsecase := usecases.NewBlogUsecase(blogRepo, commentRepo, dispatcher)
 	commentUsecase := usecases.NewCommentUsecase(commentRepo, dispatcher)
+
+	// oauth servcive
+	oauthService := oauth.NewOAuthServices(googleOauthConfig, userUsecase)
 
 	// Setup handlers
 	userHandler := controllers.NewUserController(userUsecase)
 	blogHandler := controllers.NewBlogHandler(blogUsecase)
 	commentHandler := controllers.NewCommentHandler(commentUsecase)
 	tokenHandler := controllers.NewTokenController(tokenUsecase)
-	oAuthHandler := controllers.NewOAuthController(googleOauthConfig, userUsecase)
+	oAuthHandler := controllers.NewOAuthController(googleOauthConfig, oauthService)
 	genAIHandler := controllers.NewGenerativeAIController(&conf.AI)
 
+	// middlewares 
+	authMiddleware := infrastructure.NewAuthMiddleware(tokenService, oauthService)
 
 	infrastructure.StartBlogRefreshWorker(ctx, blogUsecase)
 
 	r := gin.Default()
 
 	routers.RegisterBlogRoutes(r, blogHandler, commentHandler)
-	routers.RegisterUserRoutes(r, userHandler)
-	routers.RegisterTokenRoutes(r, tokenHandler)
+	routers.RegisterUserRoutes(r, userHandler, authMiddleware)
+	routers.RegisterTokenRoutes(r, tokenHandler, )
 	routers.RegisterOAuthRoutes(r,  oAuthHandler)
-	routers.RegisterGenerativeAIRoutes(r, genAIHandler)
+	routers.RegisterGenerativeAIRoutes(r, genAIHandler, authMiddleware)
 
 	r.Run(":" + conf.Port)
 }

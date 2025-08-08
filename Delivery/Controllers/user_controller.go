@@ -61,7 +61,7 @@ func (uc *UserController) Login(c *gin.Context) {
 		c.Abort()
 		return
 	}
-	
+
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "login successfully",
 		"access_token":  token.AccessToken,
 		"refresh_token": token.RefreshToken,
@@ -122,7 +122,7 @@ func (uc *UserController) RegisterUser(c *gin.Context) {
 		c.Abort()
 		return
 	}
-    
+
 	_, err = uc.userUsecase.Register(ctx, user)
 	if err != nil {
 		switch err.Error() {
@@ -270,8 +270,3 @@ func (uc *UserController) ProfileUpdate(c *gin.Context) {
 
 	c.IndentedJSON(200, gin.H{"message": "Profile has been updated successfully"})
 }
-
-
-
-
-

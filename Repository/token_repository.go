@@ -57,9 +57,14 @@ func (r *mongoTokenRepo) Save(ctx context.Context, tokens *domain.Token) error {
 }
 
 func (r *mongoTokenRepo) FindByUserID(ctx context.Context, userID string) (*domain.Token, error) {
-	var tokens domain.Token
 
-	err := r.coll.FindOne(ctx, bson.M{"user_id": userID}).Decode(&tokens)
+	oid, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		return nil, domain.ErrInvalidUserID
+	}
+
+	var tokens domain.Token
+	err = r.coll.FindOne(ctx, bson.M{"user_id": oid}).Decode(&tokens)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, ErrTokenNotFound
@@ -82,6 +87,22 @@ func (r *mongoTokenRepo) DeleteByUserID(ctx context.Context, userID string) erro
 
 	return nil
 }
+
+func (r *mongoTokenRepo) FindByAccessToken (ctx context.Context, accessToken string) (string, error) {
+
+	var tokens domain.Token
+	err := r.coll.FindOne(ctx, bson.M{"access_token": accessToken}).Decode(&tokens)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return "", ErrTokenNotFound
+		}
+		return "", err
+	}
+
+	userID := tokens.UserID
+	return userID, nil
+}
+
 
 type mongoVTokenRepo struct {
 	coll *mongo.Collection
@@ -159,6 +180,7 @@ func (r *mongoVTokenRepo) GetVCode(ctx context.Context, token string) (*domain.V
 
 	return existingToken, nil
 }
+
 
 
 

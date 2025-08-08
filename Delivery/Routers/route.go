@@ -4,9 +4,11 @@ import (
 	"github.com/gin-gonic/gin"
 
 	controllers "github.com/gedyzed/blog-starter-project/Delivery/Controllers"
+	infrastructure "github.com/gedyzed/blog-starter-project/Infrastructure"
 )
 
 func RegisterBlogRoutes(r *gin.Engine, blogHandler *controllers.BlogHandler, commentHandler *controllers.CommentHandler) {
+
 	blog := r.Group("/blogs")
 	{
 		blog.POST("/", blogHandler.CreateBlog)
@@ -16,10 +18,10 @@ func RegisterBlogRoutes(r *gin.Engine, blogHandler *controllers.BlogHandler, com
 		blog.DELETE("/:id", blogHandler.DeleteBlog)
 		blog.POST("/:id/like", blogHandler.LikeBlog)
 		blog.POST("/:id/dislike", blogHandler.DislikeBlog)
-		blog.GET("/filter", blogHandler.FilterBlogs )
+		blog.GET("/filter", blogHandler.FilterBlogs)
 		blog.GET("/search", blogHandler.SearchBlogs)
 	}
-  
+
 	comments := r.Group("/comments")
 	{
 		comments.POST("/:blogId", commentHandler.CreateComment)
@@ -30,7 +32,7 @@ func RegisterBlogRoutes(r *gin.Engine, blogHandler *controllers.BlogHandler, com
 	}
 }
 
-func RegisterUserRoutes(r *gin.Engine, handler *controllers.UserController) {
+func RegisterUserRoutes(r *gin.Engine, handler *controllers.UserController, authMiddleware *infrastructure.AuthMiddleware) {
 
 	users := r.Group("/users")
 
@@ -39,14 +41,18 @@ func RegisterUserRoutes(r *gin.Engine, handler *controllers.UserController) {
 		users.POST("/login", handler.Login)
 		users.POST("/forgot-password", handler.ForgotPassword)
 		users.POST("/reset-password", handler.ResetPassword)
-		users.POST("/update-profile", handler.ProfileUpdate)
-	
 	}
 
-	admins := r.Group("/admins")
-
+	protectedUser := r.Group("/users")
+	protectedUser.Use(authMiddleware.IsLogin)
 	{
-		admins.POST("/promote-demote-user", handler.PromoteDemoteUser)
+		protectedUser.POST("/update-profile", handler.ProfileUpdate)
+	}
+
+	protectedAdmins := r.Group("/admins")
+	protectedAdmins.Use(authMiddleware.IsLogin)
+	{
+		protectedAdmins.POST("/promote-demote-user", handler.PromoteDemoteUser)
 	}
 
 }
@@ -60,8 +66,7 @@ func RegisterTokenRoutes(r *gin.Engine, handler *controllers.TokenController) {
 	}
 }
 
-
-func RegisterOAuthRoutes(r *gin.Engine, handler *controllers.OAuthController){
+func RegisterOAuthRoutes(r *gin.Engine, handler *controllers.OAuthController) {
 
 	oauth := r.Group("/oauth")
 
@@ -72,10 +77,11 @@ func RegisterOAuthRoutes(r *gin.Engine, handler *controllers.OAuthController){
 	}
 }
 
-func RegisterGenerativeAIRoutes(r *gin.Engine, handler *controllers.GenerativeAIController){
+func RegisterGenerativeAIRoutes(r *gin.Engine, handler *controllers.GenerativeAIController, authMiddleware *infrastructure.AuthMiddleware) {
 
-	ai := r.Group("/ai")
+	protectedAI:= r.Group("/ai")
+	protectedAI.Use(authMiddleware.IsLogin)
 	{
-		ai.POST("/generate", handler.GenerativeAI)
+		protectedAI.POST("/generate", handler.GenerativeAI)
 	}
 }

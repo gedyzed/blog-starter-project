@@ -49,7 +49,7 @@ func (s *JWTTokenService) verifyJWT(tokenString string, key []byte) (string, err
 	if claims, ok := token.Claims.(*jwt.RegisteredClaims); ok && token.Valid {
 		return claims.Subject, nil
 	}
-
+	
 	return "", domain.ErrInvalidToken
 }
 

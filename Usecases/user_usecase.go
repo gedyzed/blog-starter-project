@@ -252,6 +252,10 @@ func (u *UserUsecases) GetByEmail(ctx context.Context, email string ) (*domain.U
 	return u.userRepo.GetByEmail(ctx, email)
 }
 
+func (u *UserUsecases) GetToken(ctx context.Context, accessToken string)(string, error){
+	return u.tokenUsecase.GetByAccessToken(ctx, accessToken)
+}
+
 
 
 
