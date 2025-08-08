@@ -14,7 +14,7 @@ type Config struct {
 	Port  string      `mapstructure:"port" validate:"required,min=1,max=65535"`
 	Mongo MongoConfig `mapstructure:"mongo" validate:"required"`
 	Auth  AuthConfig  `mapstructure:"auth" validate:"required"`
-	OAuth OAuthConfig `mapstructure:"oauth" validate:required` 
+	OAuth OAuthConfig `mapstructure:"oauth" validate:"required"` 
 	Email EmailConfig `mapstructure:"email" validate:"required"`
 }
 

@@ -113,7 +113,7 @@ func (u *UserUsecases) Register(ctx context.Context, user *domain.User) (string,
 	}
 
 	// Ensure User Role 
-	if user.Role != "user"{
+	if user.Role != "user" {
 		user.Role = "user"
 	}
 
@@ -246,6 +246,10 @@ func (u *UserUsecases) ProfileUpdate(ctx context.Context, profileUpdate *domain.
 
 func (u *UserUsecases) SaveToken (ctx context.Context, tokens *domain.Token) error {
 	return u.tokenUsecase.SaveToken(ctx, tokens)
+}
+
+func (u *UserUsecases) GetByEmail(ctx context.Context, email string ) (*domain.User, error){
+	return u.userRepo.GetByEmail(ctx, email)
 }
 
 
