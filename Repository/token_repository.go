@@ -13,11 +13,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var (
-	ErrTokenNotFound  = errors.New("token not found")
-	ErrInternalServer = errors.New("internal server error")
-)
-
 type mongoTokenRepo struct {
 	coll *mongo.Collection
 }
@@ -62,7 +57,7 @@ func (r *mongoTokenRepo) FindByUserID(ctx context.Context, userID string) (*doma
 	err = r.coll.FindOne(ctx, bson.M{"user_id": objID}).Decode(&tokens)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, ErrTokenNotFound
+			return nil, domain.ErrTokenNotFound
 		}
 		return nil, err
 	}
@@ -82,7 +77,7 @@ func (r *mongoTokenRepo) DeleteByUserID(ctx context.Context, userID string) erro
 	}
 
 	if result.DeletedCount == 0 {
-		return ErrTokenNotFound
+		return domain.ErrTokenNotFound
 	}
 
 	return nil
@@ -151,15 +146,15 @@ func (r *mongoVTokenRepo) GetVCode(ctx context.Context, token string) (*domain.V
 	filter := bson.M{"token": token}
 	result := r.coll.FindOne(ctx, filter)
 	if errors.Is(result.Err(), mongo.ErrNoDocuments) {
-		return nil, ErrTokenNotFound
+		return nil, domain.ErrTokenNotFound
 	} else if result.Err() != nil {
-		return nil, ErrInternalServer
+		return nil, domain.ErrInternalServer
 	}
 
 	var existingToken *domain.VToken
 	err := result.Decode(&existingToken)
 	if err != nil {
-		return nil, ErrInternalServer
+		return nil, domain.ErrInternalServer
 	}
 
 	return existingToken, nil

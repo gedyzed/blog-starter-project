@@ -20,4 +20,5 @@ var (
 	// Token errors
 	ErrInvalidToken        = errors.New("invalid token")
 	ErrInvalidRefreshToken = errors.New("invalid refresh token")
+	ErrTokenNotFound       = errors.New("token not found")
 )

@@ -12,6 +12,11 @@ func RegisterBlogRoutes(r *gin.Engine, blogHandler *controllers.BlogHandler, com
 	{
 		// Public routes
 		blog.GET("/", blogHandler.GetAllBlogs)
+		blog.GET("/:id", blogHandler.GetBlogById)
+		blog.PUT("/:id", blogHandler.UpdateBlog)
+		blog.DELETE("/:id", blogHandler.DeleteBlog)
+		blog.POST("/:id/like", blogHandler.LikeBlog)
+		blog.POST("/:id/dislike", blogHandler.DislikeBlog)
 		blog.GET("/filter", blogHandler.FilterBlogs)
 		blog.GET("/search", blogHandler.SearchBlogs)
 		blog.GET("/:id", blogHandler.GetBlogById)
@@ -23,6 +28,7 @@ func RegisterBlogRoutes(r *gin.Engine, blogHandler *controllers.BlogHandler, com
 		blog.POST("/:id/like", authMiddleware.IsLogin, blogHandler.LikeBlog)
 		blog.POST("/:id/dislike", authMiddleware.IsLogin, blogHandler.DislikeBlog)
 	}
+
 	comments := r.Group("/comments")
 	{
 		comments.POST("/:blogId", authMiddleware.IsLogin, commentHandler.CreateComment)
@@ -40,6 +46,7 @@ func RegisterUserRoutes(r *gin.Engine, handler *controllers.UserController) {
 	{
 		users.POST("/register", handler.RegisterUser)
 		users.POST("/login", handler.Login)
+		users.DELETE("/logout/:username", handler.Logout)
 		users.POST("/forgot-password", handler.ForgotPassword)
 		users.POST("/reset-password", handler.ResetPassword)
 		users.POST("/update-profile", handler.ProfileUpdate)

@@ -37,6 +37,30 @@ func NewUserUsecase(userRepo domain.IUserRepository, tu ITokenUsecase, ps domain
 	}
 }
 
+func (u *UserUsecases) Logout(ctx context.Context, username string) error {
+	data, err := u.userRepo.GetByUsername(ctx, username)
+	if err != nil {
+		switch err {
+		case domain.ErrUserNotFound:
+			return err
+		default:
+			log.Println(err.Error())
+			return domain.ErrInternalServer
+		}
+	}
+
+	if username != data.Username {
+		return ErrInvalidCredential
+	}
+
+	err = u.tokenUsecase.DeleteByUserID(ctx, data.ID.Hex())
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (u *UserUsecases) Login(ctx context.Context, user domain.User) (*domain.Token, error) {
 	data, err := u.userRepo.GetByUsername(ctx, user.Username)
 
