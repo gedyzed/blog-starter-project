@@ -18,6 +18,38 @@ func NewUserController(uc *usecases.UserUsecases) *UserController {
 	return &UserController{userUsecase: uc}
 }
 
+func (uc *UserController) Logout(c *gin.Context) {
+	username := c.Param("username")
+	if username == "" {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "include the username as a path parameter"})
+		c.Abort()
+		return
+	}
+
+	err := uc.userUsecase.Logout(c.Request.Context(), username)
+	if err != nil {
+		switch err {
+		case domain.ErrUserNotFound:
+			c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			c.Abort()
+			return
+		case usecases.ErrInvalidCredential:
+			c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			c.Abort()
+			return
+		case domain.ErrTokenNotFound:
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "session does not exist"})
+			c.Abort()
+			return
+		default:
+			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+			c.Abort()
+			return
+		}
+	}
+	c.IndentedJSON(http.StatusOK, gin.H{"message": "logout successfully"})
+}
+
 func (uc *UserController) Login(c *gin.Context) {
 	ctx := c.Request.Context()
 
