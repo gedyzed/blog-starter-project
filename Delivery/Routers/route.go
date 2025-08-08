@@ -71,3 +71,11 @@ func RegisterOAuthRoutes(r *gin.Engine, handler *controllers.OAuthController){
 		oauth.POST("/refresh-token", handler.RefreshToken)
 	}
 }
+
+func RegisterGenerativeAIRoutes(r *gin.Engine, handler *controllers.GenerativeAIController){
+
+	ai := r.Group("/ai")
+	{
+		ai.POST("/generate", handler.GenerativeAI)
+	}
+}

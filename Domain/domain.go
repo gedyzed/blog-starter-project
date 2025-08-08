@@ -97,13 +97,8 @@ type Dislike struct {
 }
 
 // AISuggestion represents AI-generated suggestions
-type AISuggestion struct {
-	ID         string    `json:"id" bson:"suggestion_id"`
-	UserID     string    `json:"user_id" bson:"user_id"`
-	BlogID     string    `json:"blog_id" bson:"blog_id"`
-	Prompt     string    `json:"prompt" bson:"prompt"`
-	Suggestion string    `json:"suggestion" bson:"suggestion"`
-	CreatedAt  time.Time `json:"created_at" bson:"created_at"`
+type AIPrompt struct {
+	Prompt     string    `json:"prompt"`
 }
 
 type VToken struct {

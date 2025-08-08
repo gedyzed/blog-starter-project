@@ -16,6 +16,7 @@ type Config struct {
 	Auth  AuthConfig  `mapstructure:"auth" validate:"required"`
 	OAuth OAuthConfig `mapstructure:"oauth" validate:"required"` 
 	Email EmailConfig `mapstructure:"email" validate:"required"`
+	AI    AIConfig    `mapstructure:"ai" validate:"required"`
 }
 
 type MongoConfig struct {
@@ -24,6 +25,10 @@ type MongoConfig struct {
 
 type AppConfig struct {
 	URL string `mapstructure:"url" validate:"required,url"`
+} 
+
+type AIConfig struct{
+	ApiKey string `mapstructure:"api_key" validate:"required"`
 }
 
 type EmailConfig struct {
@@ -79,6 +84,9 @@ func LoadConfig() (*Config, error) {
 	viper.BindEnv("oauth.client_secret", "OAUTH_CLIENT_SECRET")
 	viper.BindEnv("oauth.redirect_url", "OAUTH_REDIRECT_URL")
 	viper.SetDefault("oauth.scopes", []string{"email", "profile"})
+
+	// ai config
+	viper.BindEnv("ai.api_key", "GEMINI_API_KEY")
 
 	viper.SetDefault("port", "8080")
 

@@ -74,6 +74,7 @@ func main() {
 	commentHandler := controllers.NewCommentHandler(commentUsecase)
 	tokenHandler := controllers.NewTokenController(tokenUsecase)
 	oAuthHandler := controllers.NewOAuthController(googleOauthConfig, userUsecase)
+	genAIHandler := controllers.NewGenerativeAIController(&conf.AI)
 
 
 	infrastructure.StartBlogRefreshWorker(ctx, blogUsecase)
@@ -84,6 +85,7 @@ func main() {
 	routers.RegisterUserRoutes(r, userHandler)
 	routers.RegisterTokenRoutes(r, tokenHandler)
 	routers.RegisterOAuthRoutes(r,  oAuthHandler)
+	routers.RegisterGenerativeAIRoutes(r, genAIHandler)
 
 	r.Run(":" + conf.Port)
 }
