@@ -39,7 +39,7 @@ func main() {
 	tokenRepo := repository.NewMongoTokenRepository(tokenCollection)
 	vtokenRepo := repository.NewMongoVTokenRepository(vtokenCollection)
 	userRepo := repository.NewMongoUserRepo(userCollection)
-	blogRepo := repository.NewBlogRepository(blogCollection)
+	blogRepo := repository.NewBlogRepository(blogCollection, userRepo)
 	commentRepo := repository.NewCommentRepository(commentCollection, blogCollection, userRepo)
 
 	//to initialize the indexes

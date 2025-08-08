@@ -40,6 +40,7 @@ type Profile struct {
 type Blog struct {
 	ID              primitive.ObjectID `json:"id" bson:"_id,omitempty"` // uses MongoDB's native ObjectID
 	UserID          primitive.ObjectID `json:"user_id" bson:"user_id"`
+	AuthorName      string             `json:"author_name" bson:"author_name"`
 	Title           string             `json:"title" bson:"title"`
 	Content         string             `json:"content" bson:"content"`
 	Created         time.Time          `json:"created" bson:"created"`

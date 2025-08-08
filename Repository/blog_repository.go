@@ -14,11 +14,15 @@ import (
 )
 
 type blogRepository struct {
-	collection *mongo.Collection
+	collection     *mongo.Collection
+	userRepository domain.IUserRepository
 }
 
-func NewBlogRepository(coll *mongo.Collection) domain.BlogRepository {
-	return &blogRepository{collection: coll}
+func NewBlogRepository(coll *mongo.Collection, userRepository domain.IUserRepository) domain.BlogRepository {
+	return &blogRepository{
+		collection:     coll,
+		userRepository: userRepository,
+	}
 }
 
 func (r *blogRepository) GetAllBlogs(ctx context.Context, page int, limit int, sort string) ([]domain.Blog, int, error) {
@@ -83,6 +87,12 @@ func (r *blogRepository) CreateBlog(ctx context.Context, blog domain.Blog, userI
 	if err != nil {
 		return nil, fmt.Errorf("invalid user ID: %w", err)
 	}
+	user, err := r.userRepository.Get(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	blog.AuthorName = user.Firstname
 
 	blog.ID = primitive.NewObjectID()
 	blog.UserID = userObjID
