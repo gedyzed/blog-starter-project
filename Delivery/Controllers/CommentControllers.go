@@ -16,7 +16,6 @@ func NewCommentHandler(CommentUsecase domain.CommentUsecase) *CommentHandler {
 	return &CommentHandler{commentUsecase: CommentUsecase}
 }
 
-
 func (h *CommentHandler) CreateComment(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -42,7 +41,6 @@ func (h *CommentHandler) CreateComment(c *gin.Context) {
 	c.JSON(http.StatusCreated, comment)
 }
 
-
 func (h *CommentHandler) GetCommentByID(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -58,11 +56,10 @@ func (h *CommentHandler) GetCommentByID(c *gin.Context) {
 	c.JSON(http.StatusOK, comment)
 }
 
-
 func (h *CommentHandler) GetAllComments(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	blogID := c.Param("blogId") 
+	blogID := c.Param("blogId")
 
 	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
 	if err != nil || page <= 0 {
@@ -90,11 +87,10 @@ func (h *CommentHandler) GetAllComments(c *gin.Context) {
 	})
 }
 
-
 func (h *CommentHandler) EditComment(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	blogID := c.Param("blogId") 
+	blogID := c.Param("blogId")
 	commentID := c.Param("id")
 	userID := c.MustGet("userID").(string)
 	// userID := "688c9c31d56e61e7bb2e1be8"
@@ -108,7 +104,6 @@ func (h *CommentHandler) EditComment(c *gin.Context) {
 		return
 	}
 
-
 	err := h.commentUsecase.EditComment(ctx, blogID, commentID, userID, input.Message)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -119,17 +114,38 @@ func (h *CommentHandler) EditComment(c *gin.Context) {
 }
 
 func (h *CommentHandler) DeleteComment(c *gin.Context) {
-	ctx := c.Request.Context()
-
-	blogID := c.Param("blogId") 
+	blogID := c.Param("blogId")
 	commentID := c.Param("id")
-	userID := c.MustGet("userID").(string)
 
-
-	err := h.commentUsecase.DeleteComment(ctx, blogID, commentID, userID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "comment deleted successfully"})
+
+	role, _ := c.Get("role")
+
+	if role == "admin" {
+		if err := h.commentUsecase.DeleteCommentAsAdmin(c.Request.Context(), blogID, commentID); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "Comment deleted successfully"})
+		return
+	}
+
+	err := h.commentUsecase.DeleteComment(c.Request.Context(), blogID, commentID, userID.(string))
+	if err != nil {
+		switch err.Error() {
+		case "comment not found":
+			c.JSON(http.StatusNotFound, gin.H{"error": "Comment not found"})
+		case "unauthorized access":
+			c.JSON(http.StatusForbidden, gin.H{"error": "You are not allowed to delete this comment"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Comment deleted successfully"})
 }

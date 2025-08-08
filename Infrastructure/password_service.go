@@ -1,7 +1,6 @@
 package infrastructure
 
 import (
-
 	domain "github.com/gedyzed/blog-starter-project/Domain"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -13,13 +12,12 @@ func NewPasswordService() domain.IPasswordService {
 
 }
 
-
 func (ps *passwordService) Verify(password, hashedPassword string) error {
-	return bcrypt.CompareHashAndPassword([]byte(password), []byte(hashedPassword))
+	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 }
 
 // Hash password
-func (s *passwordService) Hash(password string)(string, error){
+func (s *passwordService) Hash(password string) (string, error) {
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -28,5 +26,3 @@ func (s *passwordService) Hash(password string)(string, error){
 	password = string(hashedPassword)
 	return password, nil
 }
-	
-

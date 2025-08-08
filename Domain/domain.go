@@ -6,7 +6,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-
 // User represents a user in the system
 type User struct {
 	ID        primitive.ObjectID `json:"id" bson:"_id"`
@@ -41,41 +40,43 @@ type Profile struct {
 
 // Blog represents a blog post
 type Blog struct {
-	ID            primitive.ObjectID `json:"id" bson:"_id,omitempty"` // uses MongoDB's native ObjectID
-	UserID        primitive.ObjectID `json:"user_id" bson:"user_id"`
-	Title         string             `json:"title" bson:"title"`
-	Content       string             `json:"content" bson:"content"`
-	Created       time.Time          `json:"created" bson:"created"`
-	Updated       time.Time          `json:"updated" bson:"updated"`
-	ViewCount     int                `json:"view_count" bson:"view_count"`
-	Tags          []string           `json:"tags" bson:"tags"`
-	Likes         int                `json:"likes" bson:"likes"`
-	Dislikes      int                `json:"dislikes" bson:"dislikes"`
-	LikedUsers    []string           `json:"liked_users" bson:"liked_users"`
-	DislikedUsers []string           `json:"disliked_users" bson:"disliked_users"`
-	CommentsCount   int              `json:"comments_count" bson:"comments_count"`           
-    PopularityScore float64          `json:"popularity_score" bson:"popularity_score"`
+	ID              primitive.ObjectID `json:"id" bson:"_id,omitempty"` // uses MongoDB's native ObjectID
+	UserID          primitive.ObjectID `json:"user_id" bson:"user_id"`
+	AuthorName      string             `json:"author_name" bson:"author_name"`
+	Title           string             `json:"title" bson:"title"`
+	Content         string             `json:"content" bson:"content"`
+	Created         time.Time          `json:"created" bson:"created"`
+	Updated         time.Time          `json:"updated" bson:"updated"`
+	ViewCount       int                `json:"view_count" bson:"view_count"`
+	Tags            []string           `json:"tags" bson:"tags"`
+	Likes           int                `json:"likes" bson:"likes"`
+	Dislikes        int                `json:"dislikes" bson:"dislikes"`
+	LikedUsers      []string           `json:"liked_users" bson:"liked_users"`
+	DislikedUsers   []string           `json:"disliked_users" bson:"disliked_users"`
+	CommentsCount   int                `json:"comments_count" bson:"comments_count"`
+	PopularityScore float64            `json:"popularity_score" bson:"popularity_score"`
 }
 
 // Comment represents a comment on a blog post
 type Comment struct {
-    ID      primitive.ObjectID `json:"id" bson:"_id,omitempty"`
-    BlogID  primitive.ObjectID `json:"blog_id" bson:"blog_id"`
-    UserID  primitive.ObjectID `json:"user_id" bson:"user_id"`
-    Message string             `json:"message" bson:"message"`
-    Created time.Time          `json:"created" bson:"created"`
-	Updated time.Time 		   `json:"updated_at" bson:"updated_at"`
+	ID         primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+	BlogID     primitive.ObjectID `json:"blog_id" bson:"blog_id"`
+	UserID     primitive.ObjectID `json:"user_id" bson:"user_id"`
+	AuthorName string             `json:"author_name" bson:"author_name"`
+	Message    string             `json:"message" bson:"message"`
+	Created    time.Time          `json:"created" bson:"created"`
+	Updated    time.Time          `json:"updated_at" bson:"updated_at"`
 }
 
 // Token represents authentication tokens
 type Token struct {
-	UserID        string    `json:"user_id" bson:"user_id"`
-	AccessToken   string    `json:"access_token" bson:"access_token"`
-	RefreshToken  string    `json:"refresh_token" bson:"refresh_token"`
-	AccessExpiry  time.Time `json:"access_expiry" bson:"access_expiry"`
-	RefreshExpiry time.Time `json:"refresh_expiry" bson:"refresh_expiry"`
-	CreatedAt     time.Time `json:"created_at" bson:"created_at"`
-	UpdatedAt     time.Time `json:"expires_at" bson:"expires_at"`
+	UserID        string 			 `json:"user_id" bson:"user_id"`
+	AccessToken   string             `json:"access_token" bson:"access_token"`
+	RefreshToken  string             `json:"refresh_token" bson:"refresh_token"`
+	AccessExpiry  time.Time          `json:"access_expiry" bson:"access_expiry"`
+	RefreshExpiry time.Time          `json:"refresh_expiry" bson:"refresh_expiry"`
+	CreatedAt     time.Time          `json:"created_at" bson:"created_at"`
+	UpdatedAt     time.Time          `json:"expires_at" bson:"expires_at"`
 }
 
 // Like represents a like on a blog post
@@ -111,7 +112,6 @@ type VToken struct {
 type EmailRequest struct {
 	Email string `json:"email"`
 }
-
 
 // BlogUpdateInput for updating a blog
 type BlogUpdateInput struct {

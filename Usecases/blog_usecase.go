@@ -54,31 +54,57 @@ func (uc *blogUsecase) ViewBlog(ctx context.Context, id string) (*domain.Blog, e
 	return blog, nil
 }
 
-func (uc *blogUsecase) CreateBlog(ctx context.Context, blog domain.Blog) (*domain.Blog, error) {
+func (uc *blogUsecase) CreateBlog(ctx context.Context, blog domain.Blog, userID string) (*domain.Blog, error) {
 	if blog.Title == "" || blog.Content == "" {
 		return nil, fmt.Errorf("blog title/content cannot be empty")
 	}
-	return uc.blogRepo.CreateBlog(ctx, blog)
+	if len(blog.Title) > 200 {
+		return nil, fmt.Errorf("blog title cannot exceed 200 characters")
+	}
+
+	if len(blog.Content) < 10 {
+		return nil, fmt.Errorf("blog content must be at least 10 characters")
+	}
+	if userID == "" {
+		return nil, fmt.Errorf("user ID is required")
+	}
+
+	// Pass userID string to repository, let it handle ObjectID conversion
+	return uc.blogRepo.CreateBlog(ctx, blog, userID)
 }
 
 func (uc *blogUsecase) UpdateBlog(ctx context.Context, id string, userID string, input domain.BlogUpdateInput) error {
 	if input.Title == "" && input.Content == "" && len(input.Tags) == 0 {
 		return errors.New("nothing to update")
 	}
-	return uc.blogRepo.UpdateBlog(ctx, id, userID, input)
-}
 
-func (uc *blogUsecase) DeleteBlog(ctx context.Context, id string, userID string, role string) error {
 	blog, err := uc.blogRepo.GetBlogByID(ctx, id)
 	if err != nil {
 		return errors.New("blog not found")
 	}
 
-	if blog.UserID.Hex() != userID && role != "admin" {
+	if blog.UserID.Hex() != userID {
 		return errors.New("unauthorized access")
 	}
 
+	return uc.blogRepo.UpdateBlog(ctx, id, userID, input)
+}
+
+func (uc *blogUsecase) DeleteBlog(ctx context.Context, id string, userID string) error {
+	blog, err := uc.blogRepo.GetBlogByID(ctx, id)
+	if err != nil {
+		return errors.New("blog not found")
+	}
+
+	if blog.UserID.Hex() != userID {
+		return errors.New("unauthorized access: only the blog author can delete this blog")
+	}
+
 	return uc.blogRepo.DeleteBlog(ctx, id)
+}
+
+func (uc *blogUsecase) DeleteBlogAsAdmin(ctx context.Context, blogID string) error {
+	return uc.blogRepo.DeleteBlog(ctx, blogID)
 }
 
 func (uc *blogUsecase) LikeBlog(ctx context.Context, blogID string, userID string) error {
@@ -124,17 +150,17 @@ func (uc *blogUsecase) RefreshPopularity(ctx context.Context, blogID string) err
 	return uc.blogRepo.UpdateStats(ctx, blogID, score, counts)
 }
 
-func(uc *blogUsecase)FilterBlogs(ctx context.Context, tags []string, startDate, endDate *time.Time, sortBy string, page int, limit int) (*domain.PaginatedBlogResponse, error){
-	
+func (uc *blogUsecase) FilterBlogs(ctx context.Context, tags []string, startDate, endDate *time.Time, sortBy string, page int, limit int) (*domain.PaginatedBlogResponse, error) {
+
 	if startDate != nil && endDate != nil && endDate.Before(*startDate) {
 		return nil, errors.New("toDate cannot be before fromDate")
 	}
 
 	validSort := map[string]bool{"popular": true, "oldest": true, "": true}
-	if !validSort[sortBy]{
+	if !validSort[sortBy] {
 		return nil, errors.New("invalid sort format ")
 	}
-	
+
 	if limit > 100 {
 		limit = 100
 	}
@@ -152,7 +178,7 @@ func(uc *blogUsecase)FilterBlogs(ctx context.Context, tags []string, startDate, 
 		TotalPages:  totalPages,
 		CurrentPage: page,
 	}, nil
-	
+
 }
 
 //Helper function
@@ -161,15 +187,23 @@ func CalculateScore(views, likes, dislikes, comments int) float64 {
 	return float64(views)*0.5 + float64(likes)*2 - float64(dislikes)*1 + float64(comments)*1.5
 }
 
-func (uc *blogUsecase) SearchBlogs(ctx context.Context, query string, page int) ([]domain.Blog, error) {
-	if page < 1 {
-		page = 1
-	}
-	const limit = 10
+func (uc *blogUsecase) SearchBlogs(ctx context.Context, query string, page, limit int) (*domain.PaginatedBlogResponse, error) {
 
-	blogs, err := uc.blogRepo.SearchBlogs(ctx, query, limit, page)
+	if limit > 100 {
+		limit = 100
+	}
+
+	blogs, total, err := uc.blogRepo.SearchBlogs(ctx, query, limit, page)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search blogs: %w", err)
 	}
-	return blogs, nil
+
+	totalPages := int(math.Ceil(float64(total) / float64(limit)))
+	return &domain.PaginatedBlogResponse{
+		Blogs:       blogs,
+		TotalCount:  total,
+		TotalPages:  totalPages,
+		CurrentPage: page,
+	}, nil
+
 }

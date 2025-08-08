@@ -25,12 +25,14 @@ var (
 	ErrInvalidRefreshToken 		= errors.New("invalid refresh token")
 	ErrMissingOrInvalidHeader 	= errors.New("missing or invalid authorization header")
 	ErrTokenDoesNotMatch		= errors.New("token does not match the stored token")
+	ErrTokenNotFound            = errors.New("token not found")
 
 	// OAuth errors 
+	ErrFailedToDecodeUserInfo = errors.New("failed to decode user information")
 	ErrInvalidGoogleID	      = errors.New("invalid Google OAuth2 token")
 	ErrFailedToFetch  	  	  = errors.New("failed to refresh access token")
 	ErrFailedToExchange    	  = errors.New("failed to exchange authorization code")
 	ErrFailedToFetchUserInfo  = errors.New("failed to fetch user information from Google")
-	ErrFailedToDecodeUserInfo = errors.New("failed to decode user information")
 
+	
 )

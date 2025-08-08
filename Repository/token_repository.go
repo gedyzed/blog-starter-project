@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"log"
 	"time"
 
 	domain "github.com/gedyzed/blog-starter-project/Domain"
@@ -10,11 +11,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-)
-
-var (
-	ErrTokenNotFound = errors.New("token not found")
-	ErrInternalServer = errors.New("internal server error")
 )
 
 type mongoTokenRepo struct {
@@ -67,7 +63,7 @@ func (r *mongoTokenRepo) FindByUserID(ctx context.Context, userID string) (*doma
 	err = r.coll.FindOne(ctx, bson.M{"user_id": oid}).Decode(&tokens)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, ErrTokenNotFound
+			return nil, domain.ErrTokenNotFound
 		}
 		return nil, err
 	}
@@ -76,13 +72,18 @@ func (r *mongoTokenRepo) FindByUserID(ctx context.Context, userID string) (*doma
 }
 
 func (r *mongoTokenRepo) DeleteByUserID(ctx context.Context, userID string) error {
-	result, err := r.coll.DeleteOne(ctx, bson.M{"user_id": userID})
+	objID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		return domain.ErrInvalidUserID
+	}
+
+	result, err := r.coll.DeleteOne(ctx, bson.M{"user_id": objID})
 	if err != nil {
 		return err
 	}
 
 	if result.DeletedCount == 0 {
-		return ErrTokenNotFound
+		return domain.ErrTokenNotFound
 	}
 
 	return nil
@@ -94,7 +95,7 @@ func (r *mongoTokenRepo) FindByAccessToken (ctx context.Context, accessToken str
 	err := r.coll.FindOne(ctx, bson.M{"access_token": accessToken}).Decode(&tokens)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return "", ErrTokenNotFound
+			return "", domain.ErrTokenNotFound
 		}
 		return "", err
 	}
@@ -115,7 +116,6 @@ func NewMongoVTokenRepository(coll *mongo.Collection) domain.IVTokenRepo {
 }
 
 func (r *mongoVTokenRepo) CreateVCode(ctx context.Context, token *domain.VToken) error {
-
 
 	filter := bson.M{"user_id": token.UserID}
 	result := r.coll.FindOne(ctx, filter)
@@ -152,6 +152,7 @@ func (r *mongoVTokenRepo) DeleteVCode(ctx context.Context, id string) error {
 	result, err := r.coll.DeleteOne(ctx, filter)
 
 	if err != nil {
+		log.Println(err.Error())
 		return errors.New("internal server error")
 	}
 
@@ -167,20 +168,19 @@ func (r *mongoVTokenRepo) GetVCode(ctx context.Context, token string) (*domain.V
 	filter := bson.M{"token": token}
 	result := r.coll.FindOne(ctx, filter)
 	if errors.Is(result.Err(), mongo.ErrNoDocuments) {
-		return nil, ErrTokenNotFound
+		return nil, domain.ErrTokenNotFound
 	} else if result.Err() != nil {
-		return nil, ErrInternalServer
+		return nil, domain.ErrInternalServer
 	}
 
 	var existingToken *domain.VToken
 	err := result.Decode(&existingToken)
 	if err != nil {
-		return nil, ErrInternalServer
+		return nil, domain.ErrInternalServer
 	}
 
 	return existingToken, nil
 }
-
 
 
 

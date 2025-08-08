@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	domain "github.com/gedyzed/blog-starter-project/Domain"
@@ -14,18 +15,20 @@ import (
 )
 
 type commentRepository struct {
-	collection *mongo.Collection
+	collection     *mongo.Collection
 	blogCollection *mongo.Collection
-
+	userRepository domain.IUserRepository
+	commentCache	domain.Cache[[]*domain.Comment]
 }
 
-func NewCommentRepository(commentCollection, blogCollection *mongo.Collection) domain.CommentRepository {
-    return &commentRepository{
-        collection: commentCollection,
-        blogCollection:    blogCollection,
-    }
+func NewCommentRepository(commentCollection, blogCollection *mongo.Collection, userRepository domain.IUserRepository,commentCache domain.Cache[[]*domain.Comment]) domain.CommentRepository {
+	return &commentRepository{
+		collection:     commentCollection,
+		blogCollection: blogCollection,
+		userRepository: userRepository,
+		commentCache: commentCache,
+	}
 }
-
 
 func (r *commentRepository) CreateComment(ctx context.Context, blogID string, userID string, comment domain.Comment) (*domain.Comment, error) {
 	blogObjID, err := primitive.ObjectIDFromHex(blogID)
@@ -38,9 +41,15 @@ func (r *commentRepository) CreateComment(ctx context.Context, blogID string, us
 		return nil, fmt.Errorf("invalid user ID: %w", err)
 	}
 
+	user, err := r.userRepository.Get(ctx, userID) // You'll need to add userRepository to commentRepository
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
 	comment.ID = primitive.NewObjectID()
 	comment.BlogID = blogObjID
 	comment.UserID = userObjID
+	comment.AuthorName = fmt.Sprintf("%s %s", user.Firstname, user.Lastname)
 
 	_, err = r.collection.InsertOne(ctx, comment)
 	if err != nil {
@@ -55,8 +64,13 @@ func (r *commentRepository) CreateComment(ctx context.Context, blogID string, us
 	return &comment, nil
 }
 
-func (r *commentRepository) GetAllComments(ctx context.Context, blogID string, page int, limit int, sort string) ([]domain.Comment, int, error) {
-	var comments []domain.Comment
+func (r *commentRepository) GetAllComments(ctx context.Context, blogID string, page int, limit int, sort string) ([]*domain.Comment, int, error) {
+	if comments,found := r.commentCache.Get(blogID); found{
+		log.Println("cache hit for getting all comments")
+		return comments,len(comments), nil
+	}
+	
+	var comments []*domain.Comment
 
 	skip := int64((page - 1) * limit)
 	findOptions := options.Find().SetSkip(skip).SetLimit(int64(limit))
@@ -90,10 +104,10 @@ func (r *commentRepository) GetAllComments(ctx context.Context, blogID string, p
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count comments: %w", err)
 	}
+	r.commentCache.Set(blogID,comments)
 
 	return comments, int(totalCount), nil
 }
-
 
 func (r *commentRepository) GetCommentByID(ctx context.Context, blogID string, id string) (*domain.Comment, error) {
 	objId, err := primitive.ObjectIDFromHex(id)
@@ -113,7 +127,6 @@ func (r *commentRepository) GetCommentByID(ctx context.Context, blogID string, i
 	}
 	return &comment, nil
 }
-
 
 func (r *commentRepository) EditComment(ctx context.Context, blogID string, id string, userID string, message string) error {
 	objId, err := primitive.ObjectIDFromHex(id)
@@ -146,8 +159,8 @@ func (r *commentRepository) EditComment(ctx context.Context, blogID string, id s
 	return nil
 }
 
-func (r *commentRepository) DeleteComment(ctx context.Context, blogID string, id string, userID string) error {
-	objId, err := primitive.ObjectIDFromHex(id)
+func (r *commentRepository) DeleteComment(ctx context.Context, blogID, commentID, userID string) error {
+	commentObjID, err := primitive.ObjectIDFromHex(commentID)
 	if err != nil {
 		return fmt.Errorf("invalid comment ID: %w", err)
 	}
@@ -160,14 +173,45 @@ func (r *commentRepository) DeleteComment(ctx context.Context, blogID string, id
 		return fmt.Errorf("invalid user ID: %w", err)
 	}
 
-	filter := bson.M{"_id": objId, "blog_id": blogObjID, "user_id": userObjID}
+	filter := bson.M{"_id": commentObjID, "blog_id": blogObjID, "user_id": userObjID}
 	res, err := r.collection.DeleteOne(ctx, filter)
 	if err != nil {
 		return fmt.Errorf("failed to delete comment: %w", err)
 	}
 	if res.DeletedCount == 0 {
-		return errors.New("no matching comment found")
+		return errors.New("comment not found")
 	}
+
+	// Decrement blog comments count
+	update := bson.M{"$inc": bson.M{"comments_count": -1}}
+	_, err = r.blogCollection.UpdateByID(ctx, blogObjID, update)
+	if err != nil {
+		return fmt.Errorf("failed to decrement comment count: %w", err)
+	}
+
+	return nil
+}
+
+func (r *commentRepository) DeleteCommentByID(ctx context.Context, blogID, commentID string) error {
+	commentObjID, err := primitive.ObjectIDFromHex(commentID)
+	if err != nil {
+		return fmt.Errorf("invalid comment ID: %w", err)
+	}
+	blogObjID, err := primitive.ObjectIDFromHex(blogID)
+	if err != nil {
+		return fmt.Errorf("invalid blog ID: %w", err)
+	}
+
+	filter := bson.M{"_id": commentObjID, "blog_id": blogObjID}
+	res, err := r.collection.DeleteOne(ctx, filter)
+	if err != nil {
+		return fmt.Errorf("failed to delete comment: %w", err)
+	}
+	if res.DeletedCount == 0 {
+		return errors.New("comment not found")
+	}
+
+	// Decrement blog comments count
 	update := bson.M{"$inc": bson.M{"comments_count": -1}}
 	_, err = r.blogCollection.UpdateByID(ctx, blogObjID, update)
 	if err != nil {
@@ -180,7 +224,7 @@ func (r *commentRepository) DeleteComment(ctx context.Context, blogID string, id
 func (r *commentRepository) CountCommentsByBlogID(ctx context.Context, id string) (int, error) {
 	blogID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return 0,fmt.Errorf("invalid comment ID: %w", err)
+		return 0, fmt.Errorf("invalid comment ID: %w", err)
 	}
 	count, err := r.collection.CountDocuments(ctx, bson.M{"blog_id": blogID})
 	if err != nil {
@@ -190,12 +234,12 @@ func (r *commentRepository) CountCommentsByBlogID(ctx context.Context, id string
 }
 
 func (r *commentRepository) EnsureIndexes(ctx context.Context) error {
-    indexModels := []mongo.IndexModel{
-        {
-            Keys: bson.D{{Key: "blog_id", Value: 1}}, // for counting comments
-        },
-    }
+	indexModels := []mongo.IndexModel{
+		{
+			Keys: bson.D{{Key: "blog_id", Value: 1}}, // for counting comments
+		},
+	}
 
-    _, err := r.collection.Indexes().CreateMany(ctx, indexModels)
-    return err
+	_, err := r.collection.Indexes().CreateMany(ctx, indexModels)
+	return err
 }

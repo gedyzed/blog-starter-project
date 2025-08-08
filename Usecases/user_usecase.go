@@ -19,7 +19,7 @@ var (
 	ErrExpiredRefreshToken = errors.New("refresh token has expired")
 
 	// input errors
-	ErrInvalidCredential = errors.New("invalid email or passwrod")
+	ErrInvalidCredential = errors.New("invalid username or password")
 	ErrUserNotFound      = errors.New("user not found")
 )
 
@@ -35,6 +35,30 @@ func NewUserUsecase(userRepo domain.IUserRepository, tu ITokenUsecase, ps domain
 		tokenUsecase:    tu,
 		passwordService: ps,
 	}
+}
+
+func (u *UserUsecases) Logout(ctx context.Context, username string) error {
+	data, err := u.userRepo.GetByUsername(ctx, username)
+	if err != nil {
+		switch err {
+		case domain.ErrUserNotFound:
+			return err
+		default:
+			log.Println(err.Error())
+			return domain.ErrInternalServer
+		}
+	}
+
+	if username != data.Username {
+		return ErrInvalidCredential
+	}
+
+	err = u.tokenUsecase.DeleteByUserID(ctx, data.ID.Hex())
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (u *UserUsecases) Login(ctx context.Context, user domain.User) (*domain.Token, error) {
@@ -54,7 +78,7 @@ func (u *UserUsecases) Login(ctx context.Context, user domain.User) (*domain.Tok
 		return nil, ErrInvalidCredential
 	}
 
-	if data.Email != user.Email {
+	if data.Username != user.Username {
 		return nil, ErrInvalidCredential
 	}
 

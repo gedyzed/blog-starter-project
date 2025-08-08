@@ -30,6 +30,14 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	
+	cacheSize := 100
+	lruCache, err := infrastructure.NewLRUCache(cacheSize)
+	if err != nil{
+        log.Fatalf("Failed to initialize LRU cache: %v", err)
+    }
+	
+
 	// setup collections
 	blogCollection := db.Collection("blogs")
 	commentCollection := db.Collection("comments")
@@ -41,8 +49,9 @@ func main() {
 	tokenRepo := repository.NewMongoTokenRepository(tokenCollection)
 	vtokenRepo := repository.NewMongoVTokenRepository(vtokenCollection)
 	userRepo := repository.NewMongoUserRepo(userCollection)
-	blogRepo := repository.NewBlogRepository(blogCollection)
-	commentRepo := repository.NewCommentRepository(commentCollection, blogCollection)
+
+	blogRepo := repository.NewBlogRepository(blogCollection, userRepo, lruCache.BlogCache(), lruCache. SortedBlogsCache())
+	commentRepo := repository.NewCommentRepository(commentCollection, blogCollection, userRepo,  lruCache.CommentCache())
 
 	//to initialize the indexes
 	if err := blogRepo.EnsureIndexes(context.Background()); err != nil {
@@ -81,17 +90,19 @@ func main() {
 	genAIHandler := controllers.NewGenerativeAIController(&conf.AI)
 
 	// middlewares 
-	authMiddleware := infrastructure.NewAuthMiddleware(tokenService, oauthService)
+	authMiddleware := infrastructure.NewAuthMiddleware(tokenService, oauthService, userRepo)
 
+	
 	infrastructure.StartBlogRefreshWorker(ctx, blogUsecase)
 
 	r := gin.Default()
 
-	routers.RegisterBlogRoutes(r, blogHandler, commentHandler)
 	routers.RegisterUserRoutes(r, userHandler, authMiddleware)
 	routers.RegisterTokenRoutes(r, tokenHandler, )
 	routers.RegisterOAuthRoutes(r,  oAuthHandler)
 	routers.RegisterGenerativeAIRoutes(r, genAIHandler, authMiddleware)
+	routers.RegisterBlogRoutes(r, blogHandler, commentHandler, authMiddleware)
+	routers.RegisterTokenRoutes(r, tokenHandler)
 
 	r.Run(":" + conf.Port)
 }

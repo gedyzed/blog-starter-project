@@ -26,43 +26,59 @@ func (h *BlogHandler) UpdateBlog(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
+
 	userIDStr, ok := userID.(string)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "user ID is not a string"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID type"})
 		return
 	}
 
 	var input domain.BlogUpdateInput
-	err := c.ShouldBindJSON(&input)
-	if err != nil {
+	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	err = h.blogUsecase.UpdateBlog(c.Request.Context(), id, userIDStr, input) // CHANGED: added context
-	if err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+	if err := h.blogUsecase.UpdateBlog(c.Request.Context(), id, userIDStr, input); err != nil {
+		switch err.Error() {
+		case "blog not found":
+			c.JSON(http.StatusNotFound, gin.H{"error": "Blog not found"})
+		case "unauthorized access":
+			c.JSON(http.StatusForbidden, gin.H{"error": "You can only update your own blog"})
+		case "nothing to update":
+			c.JSON(http.StatusBadRequest, gin.H{"error": "No changes provided"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
+		}
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "blog updated successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Blog updated successfully"})
 }
+
 func (bc *BlogHandler) DeleteBlog(c *gin.Context) {
 	blogID := c.Param("id")
 
-	userID, exists := c.Get("userId")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
-	userRole, exists := c.Get("role")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+	role, _ := c.Get("role")
+
+	// If admin → skip ownership check
+	if role == "admin" {
+		if err := bc.blogUsecase.DeleteBlogAsAdmin(c.Request.Context(), blogID); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "Blog deleted successfully"})
 		return
 	}
 
-	err := bc.blogUsecase.DeleteBlog(c.Request.Context(), blogID, userID.(string), userRole.(string))
+	// If not admin → must be the author
+	err := bc.blogUsecase.DeleteBlog(c.Request.Context(), blogID, userID.(string))
 	if err != nil {
 		if err.Error() == "blog not found" {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Blog not found"})
@@ -120,14 +136,26 @@ func (h *BlogHandler) GetBlogById(c *gin.Context) {
 
 func (h *BlogHandler) CreateBlog(c *gin.Context) {
 	ctx := c.Request.Context()
-	var newBlog domain.Blog
 
+	// Get user ID from context (set by middleware)
+	userIDVal, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	userID, ok := userIDVal.(string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "user ID is not a string"})
+		return
+	}
+
+	var newBlog domain.Blog
 	if err := c.ShouldBindJSON(&newBlog); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON body"})
 		return
 	}
-
-	createdBlog, err := h.blogUsecase.CreateBlog(ctx, newBlog)
+	createdBlog, err := h.blogUsecase.CreateBlog(ctx, newBlog, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -184,8 +212,7 @@ func (h *BlogHandler) DislikeBlog(c *gin.Context) {
 
 }
 
-
-func (h *BlogHandler) FilterBlogs(c *gin.Context){
+func (h *BlogHandler) FilterBlogs(c *gin.Context) {
 	ctx := c.Request.Context()
 	rawTags := c.QueryArray("tags")
 	fromDate := c.Query("fromDate")
@@ -196,17 +223,16 @@ func (h *BlogHandler) FilterBlogs(c *gin.Context){
 	var startDate *time.Time
 	var endDate *time.Time
 
-
-	if fromDate != ""{
-		t,err := time.Parse(format, fromDate)
+	if fromDate != "" {
+		t, err := time.Parse(format, fromDate)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid fromDate format, expected YYYY-MM-DD"})
 			return
 		}
 		startDate = &t
 	}
-	if toDate != ""{
-		t,err := time.Parse(format, toDate)
+	if toDate != "" {
+		t, err := time.Parse(format, toDate)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid fromDate format, expected YYYY-MM-DD"})
 			return
@@ -214,10 +240,10 @@ func (h *BlogHandler) FilterBlogs(c *gin.Context){
 		endDate = &t
 	}
 
-	tags := make([]string ,0)
-	for _,tag := range rawTags{
+	tags := make([]string, 0)
+	for _, tag := range rawTags {
 		clean := strings.TrimSpace(tag)
-		if clean != ""{
+		if clean != "" {
 			tags = append(tags, clean)
 		}
 	}
@@ -236,7 +262,6 @@ func (h *BlogHandler) FilterBlogs(c *gin.Context){
 		return
 	}
 
-
 	result, err := h.blogUsecase.FilterBlogs(ctx, tags, startDate, endDate, sort, page, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -254,13 +279,21 @@ func (h *BlogHandler) SearchBlogs(c *gin.Context) {
 	}
 
 	pageStr := c.DefaultQuery("page", "1")
+	limitStr := c.DefaultQuery("limit", "10")
+
 	page, err := strconv.Atoi(pageStr)
 	if err != nil || page < 1 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "page must be a positive integer"})
 		return
 	}
 
-	blogs, err := h.blogUsecase.SearchBlogs(ctx, query, page)
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit"})
+		return
+	}
+
+	blogs, err := h.blogUsecase.SearchBlogs(ctx, query, page, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

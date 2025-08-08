@@ -142,7 +142,12 @@ func (r *mongoUserRepo) Update(ctx context.Context, filterField, filterValue str
 }
 
 func (r *mongoUserRepo) Delete(ctx context.Context, id string) error {
-	result, err := r.coll.DeleteOne(ctx, bson.D{{Key: "_id", Value: id}})
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return domain.ErrInvalidUserID
+	}
+
+	result, err := r.coll.DeleteOne(ctx, bson.D{{Key: "_id", Value: objID}})
 	if err != nil {
 		return domain.ErrInternalServer
 	}
