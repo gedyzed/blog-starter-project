@@ -11,14 +11,14 @@ import (
 
 type commentUsecase struct {
 	commentRepo domain.CommentRepository
-	dispatcher   domain.BlogRefreshDispatcher
+	dispatcher  domain.BlogRefreshDispatcher
 }
 
 func NewCommentUsecase(repo domain.CommentRepository, dispatcher domain.BlogRefreshDispatcher) *commentUsecase {
-    return &commentUsecase{
-        commentRepo: repo,
-        dispatcher:  dispatcher,
-    }
+	return &commentUsecase{
+		commentRepo: repo,
+		dispatcher:  dispatcher,
+	}
 }
 
 func (uc *commentUsecase) CreateComment(ctx context.Context, blogID string, userID string, message string) (*domain.Comment, error) {
@@ -28,7 +28,7 @@ func (uc *commentUsecase) CreateComment(ctx context.Context, blogID string, user
 	if len(message) > 500 {
 		return nil, errors.New("message is too long (max 500 chars)")
 	}
-	
+
 	comment := domain.Comment{
 		Message: message,
 		Created: time.Now(),
@@ -57,7 +57,6 @@ func (uc *commentUsecase) GetCommentByID(ctx context.Context, blogID string, com
 	return uc.commentRepo.GetCommentByID(ctx, blogID, commentID)
 }
 
-
 func (uc *commentUsecase) EditComment(ctx context.Context, blogID string, commentID string, userID string, message string) error {
 	if len(message) == 0 {
 		return errors.New("message cannot be empty")
@@ -69,7 +68,37 @@ func (uc *commentUsecase) EditComment(ctx context.Context, blogID string, commen
 	return uc.commentRepo.EditComment(ctx, blogID, commentID, userID, message)
 }
 
-func (uc *commentUsecase) DeleteComment(ctx context.Context, blogID string, commentID string, userID string) error {
+func (uc *commentUsecase) DeleteComment(ctx context.Context, blogID, commentID, userID string) error {
+	// Fetch the comment to check ownership
+	comment, err := uc.commentRepo.GetCommentByID(ctx, blogID, commentID)
+	if err != nil {
+		return errors.New("comment not found")
+	}
+
+	// Only the comment author can delete the comment
+	if comment.UserID.Hex() != userID {
+		return errors.New("unauthorized access")
+	}
+
+	// Delete the comment
+	err = uc.commentRepo.DeleteComment(ctx, blogID, commentID, userID)
+	if err != nil {
+		return err
+	}
+
+	// Dispatch event for updates, e.g., comment count decrement
 	uc.dispatcher.Enqueue(blogID)
-	return uc.commentRepo.DeleteComment(ctx, blogID, commentID, userID)
+
+	return nil
+}
+func (uc *commentUsecase) DeleteCommentAsAdmin(ctx context.Context, blogID, commentID string) error {
+	// Admin can delete without ownership check
+	err := uc.commentRepo.DeleteCommentByID(ctx, blogID, commentID)
+	if err != nil {
+		return err
+	}
+
+	uc.dispatcher.Enqueue(blogID)
+
+	return nil
 }

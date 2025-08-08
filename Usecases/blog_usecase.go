@@ -58,6 +58,13 @@ func (uc *blogUsecase) CreateBlog(ctx context.Context, blog domain.Blog, userID 
 	if blog.Title == "" || blog.Content == "" {
 		return nil, fmt.Errorf("blog title/content cannot be empty")
 	}
+	if len(blog.Title) > 200 {
+		return nil, fmt.Errorf("blog title cannot exceed 200 characters")
+	}
+
+	if len(blog.Content) < 10 {
+		return nil, fmt.Errorf("blog content must be at least 10 characters")
+	}
 	if userID == "" {
 		return nil, fmt.Errorf("user ID is required")
 	}
@@ -70,20 +77,34 @@ func (uc *blogUsecase) UpdateBlog(ctx context.Context, id string, userID string,
 	if input.Title == "" && input.Content == "" && len(input.Tags) == 0 {
 		return errors.New("nothing to update")
 	}
-	return uc.blogRepo.UpdateBlog(ctx, id, userID, input)
-}
 
-func (uc *blogUsecase) DeleteBlog(ctx context.Context, id string, userID string, role string) error {
 	blog, err := uc.blogRepo.GetBlogByID(ctx, id)
 	if err != nil {
 		return errors.New("blog not found")
 	}
 
-	if blog.UserID.Hex() != userID && role != "admin" {
+	if blog.UserID.Hex() != userID {
 		return errors.New("unauthorized access")
 	}
 
+	return uc.blogRepo.UpdateBlog(ctx, id, userID, input)
+}
+
+func (uc *blogUsecase) DeleteBlog(ctx context.Context, id string, userID string) error {
+	blog, err := uc.blogRepo.GetBlogByID(ctx, id)
+	if err != nil {
+		return errors.New("blog not found")
+	}
+
+	if blog.UserID.Hex() != userID {
+		return errors.New("unauthorized access: only the blog author can delete this blog")
+	}
+
 	return uc.blogRepo.DeleteBlog(ctx, id)
+}
+
+func (uc *blogUsecase) DeleteBlogAsAdmin(ctx context.Context, blogID string) error {
+	return uc.blogRepo.DeleteBlog(ctx, blogID)
 }
 
 func (uc *blogUsecase) LikeBlog(ctx context.Context, blogID string, userID string) error {

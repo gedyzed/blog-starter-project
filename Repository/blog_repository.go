@@ -78,7 +78,7 @@ func (r *blogRepository) IncrementBlogViews(ctx context.Context, id string) erro
 }
 
 func (r *blogRepository) CreateBlog(ctx context.Context, blog domain.Blog, userID string) (*domain.Blog, error) {
-	// Convert userID string to primitive.ObjectID
+
 	userObjID, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid user ID: %w", err)
@@ -102,25 +102,22 @@ func (r *blogRepository) UpdateBlog(ctx context.Context, id string, userID strin
 	if err != nil {
 		return err
 	}
-	userObjID, err := primitive.ObjectIDFromHex(userID)
-	if err != nil {
-		return err
+
+	update := bson.M{
+		"$set": bson.M{
+			"title":   input.Title,
+			"content": input.Content,
+			"tags":    input.Tags,
+			"updated": time.Now(),
+		},
 	}
 
-	filter := bson.M{"_id": objID, "user_id": userObjID}
-	update := bson.M{"$set": bson.M{
-		"title":   input.Title,
-		"content": input.Content,
-		"tags":    input.Tags,
-		"updated": time.Now(),
-	}}
-
-	res, err := r.collection.UpdateOne(ctx, filter, update)
+	res, err := r.collection.UpdateOne(ctx, bson.M{"_id": objID}, update)
 	if err != nil {
 		return err
 	}
 	if res.MatchedCount == 0 {
-		return errors.New("no blog found")
+		return errors.New("blog not found")
 	}
 	return nil
 }

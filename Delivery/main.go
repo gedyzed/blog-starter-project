@@ -40,7 +40,7 @@ func main() {
 	vtokenRepo := repository.NewMongoVTokenRepository(vtokenCollection)
 	userRepo := repository.NewMongoUserRepo(userCollection)
 	blogRepo := repository.NewBlogRepository(blogCollection)
-	commentRepo := repository.NewCommentRepository(commentCollection, blogCollection)
+	commentRepo := repository.NewCommentRepository(commentCollection, blogCollection, userRepo)
 
 	//to initialize the indexes
 	if err := blogRepo.EnsureIndexes(context.Background()); err != nil {
@@ -74,7 +74,8 @@ func main() {
 
 	// Setup middleware
 	authMiddleware := &infrastructure.AuthMiddleware{
-		TokenService: jwtService,
+		TokenService:   jwtService,
+		UserRepository: userRepo,
 	}
 	infrastructure.StartBlogRefreshWorker(ctx, blogUsecase)
 

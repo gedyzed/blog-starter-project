@@ -26,43 +26,59 @@ func (h *BlogHandler) UpdateBlog(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
+
 	userIDStr, ok := userID.(string)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "user ID is not a string"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID type"})
 		return
 	}
 
 	var input domain.BlogUpdateInput
-	err := c.ShouldBindJSON(&input)
-	if err != nil {
+	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	err = h.blogUsecase.UpdateBlog(c.Request.Context(), id, userIDStr, input) // CHANGED: added context
-	if err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+	if err := h.blogUsecase.UpdateBlog(c.Request.Context(), id, userIDStr, input); err != nil {
+		switch err.Error() {
+		case "blog not found":
+			c.JSON(http.StatusNotFound, gin.H{"error": "Blog not found"})
+		case "unauthorized access":
+			c.JSON(http.StatusForbidden, gin.H{"error": "You can only update your own blog"})
+		case "nothing to update":
+			c.JSON(http.StatusBadRequest, gin.H{"error": "No changes provided"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
+		}
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "blog updated successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Blog updated successfully"})
 }
+
 func (bc *BlogHandler) DeleteBlog(c *gin.Context) {
 	blogID := c.Param("id")
 
-	userID, exists := c.Get("userId")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
-	userRole, exists := c.Get("role")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+	role, _ := c.Get("role")
+
+	// If admin → skip ownership check
+	if role == "admin" {
+		if err := bc.blogUsecase.DeleteBlogAsAdmin(c.Request.Context(), blogID); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "Blog deleted successfully"})
 		return
 	}
 
-	err := bc.blogUsecase.DeleteBlog(c.Request.Context(), blogID, userID.(string), userRole.(string))
+	// If not admin → must be the author
+	err := bc.blogUsecase.DeleteBlog(c.Request.Context(), blogID, userID.(string))
 	if err != nil {
 		if err.Error() == "blog not found" {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Blog not found"})

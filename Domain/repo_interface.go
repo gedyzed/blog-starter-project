@@ -26,6 +26,7 @@ type CommentRepository interface {
 	GetCommentByID(ctx context.Context, blogID string, id string) (*Comment, error)
 	EditComment(ctx context.Context, blogID string, id string, userID string, message string) error
 	DeleteComment(ctx context.Context, blogID string, id string, userID string) error
+	DeleteCommentByID(ctx context.Context, blogID string, commentID string) error
 	CountCommentsByBlogID(ctx context.Context, id string) (int, error)
 }
 

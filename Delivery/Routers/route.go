@@ -19,7 +19,7 @@ func RegisterBlogRoutes(r *gin.Engine, blogHandler *controllers.BlogHandler, com
 		// Protected routes
 		blog.POST("/", authMiddleware.IsLogin, blogHandler.CreateBlog)
 		blog.PUT("/:id", authMiddleware.IsLogin, blogHandler.UpdateBlog)
-		blog.DELETE("/:id", authMiddleware.IsLogin, blogHandler.DeleteBlog)
+		blog.DELETE("/:id", authMiddleware.IsLoginWithRole(), blogHandler.DeleteBlog)
 		blog.POST("/:id/like", authMiddleware.IsLogin, blogHandler.LikeBlog)
 		blog.POST("/:id/dislike", authMiddleware.IsLogin, blogHandler.DislikeBlog)
 	}
@@ -29,7 +29,7 @@ func RegisterBlogRoutes(r *gin.Engine, blogHandler *controllers.BlogHandler, com
 		comments.GET("/:blogId", commentHandler.GetAllComments)
 		comments.GET("/:blogId/:id", commentHandler.GetCommentByID)
 		comments.PUT("/:blogId/:id", authMiddleware.IsLogin, commentHandler.EditComment)
-		comments.DELETE("/:blogId/:id", authMiddleware.IsLogin, commentHandler.DeleteComment)
+		comments.DELETE("/:blogId/:id", authMiddleware.IsLoginWithRole(), commentHandler.DeleteComment)
 	}
 }
 
