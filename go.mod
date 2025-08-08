@@ -6,6 +6,7 @@ require (
 	github.com/gin-gonic/gin v1.10.1
 	github.com/go-playground/validator/v10 v10.20.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
+	github.com/hashicorp/golang-lru v1.0.2
 	github.com/joho/godotenv v1.5.1
 	github.com/spf13/viper v1.20.1
 	go.mongodb.org/mongo-driver v1.17.4
