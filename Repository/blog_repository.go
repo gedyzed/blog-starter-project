@@ -92,7 +92,7 @@ func (r *blogRepository) CreateBlog(ctx context.Context, blog domain.Blog, userI
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
-	blog.AuthorName = user.Firstname
+	blog.AuthorName = fmt.Sprintf("%s %s", user.Firstname, user.Lastname)
 
 	blog.ID = primitive.NewObjectID()
 	blog.UserID = userObjID
