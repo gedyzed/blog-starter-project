@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"log"
 	"math/big"
 	"time"
 
@@ -113,6 +114,7 @@ func (t *tokenUsecase) VerifyCode(ctx context.Context, token string) (string, er
 	// retreive token details
 	exsting_token, err := t.vtokenRepo.GetVCode(ctx, token)
 	if err != nil {
+		log.Println(err.Error())
 		return "", ErrIncorrectToken
 	}
 

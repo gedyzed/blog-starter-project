@@ -19,7 +19,7 @@ var (
 	ErrExpiredRefreshToken = errors.New("refresh token has expired")
 
 	// input errors
-	ErrInvalidCredential = errors.New("invalid email or passwrod")
+	ErrInvalidCredential = errors.New("invalid username or password")
 	ErrUserNotFound      = errors.New("user not found")
 )
 
@@ -54,7 +54,7 @@ func (u *UserUsecases) Login(ctx context.Context, user domain.User) (*domain.Tok
 		return nil, ErrInvalidCredential
 	}
 
-	if data.Email != user.Email {
+	if data.Username != user.Username {
 		return nil, ErrInvalidCredential
 	}
 
@@ -122,6 +122,7 @@ func (u *UserUsecases) Register(ctx context.Context, user *domain.User) error {
 	// hash the user password
 	user.Password, err = u.passwordService.Hash(user.Password)
 	if err != nil {
+		log.Println(err.Error())
 		return domain.ErrInternalServer
 	}
 

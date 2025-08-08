@@ -57,6 +57,7 @@ type Blog struct {
 
 // Comment represents a comment on a blog post
 type Comment struct {
+
 	ID        primitive.ObjectID `json:"id" bson:"_id,omitempty"`
 	BlogID    primitive.ObjectID `json:"blog_id" bson:"blog_id"`
 	UserID    primitive.ObjectID `json:"user_id" bson:"user_id"`
@@ -64,17 +65,18 @@ type Comment struct {
 	Message   string             `json:"message" bson:"message"`
 	Created   time.Time          `json:"created" bson:"created"`
 	Updated   time.Time          `json:"updated_at" bson:"updated_at"`
+
 }
 
 // Token represents authentication tokens
 type Token struct {
-	UserID        string    `json:"user_id" bson:"user_id"`
-	AccessToken   string    `json:"access_token" bson:"access_token"`
-	RefreshToken  string    `json:"refresh_token" bson:"refresh_token"`
-	AccessExpiry  time.Time `json:"access_expiry" bson:"access_expiry"`
-	RefreshExpiry time.Time `json:"refresh_expiry" bson:"refresh_expiry"`
-	CreatedAt     time.Time `json:"created_at" bson:"created_at"`
-	UpdatedAt     time.Time `json:"expires_at" bson:"expires_at"`
+	UserID        primitive.ObjectID `json:"user_id" bson:"user_id"`
+	AccessToken   string             `json:"access_token" bson:"access_token"`
+	RefreshToken  string             `json:"refresh_token" bson:"refresh_token"`
+	AccessExpiry  time.Time          `json:"access_expiry" bson:"access_expiry"`
+	RefreshExpiry time.Time          `json:"refresh_expiry" bson:"refresh_expiry"`
+	CreatedAt     time.Time          `json:"created_at" bson:"created_at"`
+	UpdatedAt     time.Time          `json:"expires_at" bson:"expires_at"`
 }
 
 // Like represents a like on a blog post
