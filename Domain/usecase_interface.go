@@ -8,14 +8,15 @@ import (
 type BlogUsecase interface {
 	GetAllBlogs(ctx context.Context, page int, limit int, sort string) (*PaginatedBlogResponse, error)
 	ViewBlog(ctx context.Context, id string) (*Blog, error)
-	CreateBlog(ctx context.Context, blog Blog) (*Blog, error)
+	CreateBlog(ctx context.Context, blog Blog, userID string) (*Blog, error)
 	UpdateBlog(ctx context.Context, id string, userID string, updatedBlog BlogUpdateInput) error
-	DeleteBlog(ctx context.Context, id string, userID string, role string) error
+	DeleteBlog(ctx context.Context, id string, userID string) error
+	DeleteBlogAsAdmin(ctx context.Context, blogID string) error
 	LikeBlog(ctx context.Context, blogID string, userID string) error
 	DislikeBlog(ctx context.Context, blogID string, userID string) error
 	RefreshPopularity(ctx context.Context, blogID string) error
 	FilterBlogs(ctx context.Context, tags []string, startDate, endDate *time.Time, sortBy string, page int, limit int) (*PaginatedBlogResponse, error)
-	SearchBlogs(ctx context.Context, keyword string, page int) ([]Blog, error)
+	SearchBlogs(ctx context.Context, keyword string, page, limit int) (*PaginatedBlogResponse, error)
 }
 
 type CommentUsecase interface {
@@ -24,6 +25,7 @@ type CommentUsecase interface {
 	GetCommentByID(ctx context.Context, blogID string, commentID string) (*Comment, error)
 	EditComment(ctx context.Context, blogID string, commentID string, userID string, message string) error
 	DeleteComment(ctx context.Context, blogID string, commentID string, userID string) error
+	DeleteCommentAsAdmin(ctx context.Context, blogID string, commentID string) error
 }
 
 type BlogRefreshDispatcher interface {

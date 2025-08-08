@@ -39,8 +39,8 @@ func main() {
 	tokenRepo := repository.NewMongoTokenRepository(tokenCollection)
 	vtokenRepo := repository.NewMongoVTokenRepository(vtokenCollection)
 	userRepo := repository.NewMongoUserRepo(userCollection)
-	blogRepo := repository.NewBlogRepository(blogCollection)
-	commentRepo := repository.NewCommentRepository(commentCollection, blogCollection)
+	blogRepo := repository.NewBlogRepository(blogCollection, userRepo)
+	commentRepo := repository.NewCommentRepository(commentCollection, blogCollection, userRepo)
 
 	//to initialize the indexes
 	if err := blogRepo.EnsureIndexes(context.Background()); err != nil {
@@ -72,11 +72,16 @@ func main() {
 	commentHandler := controllers.NewCommentHandler(commentUsecase)
 	tokenHandler := controllers.NewTokenController(tokenUsecase)
 
+	// Setup middleware
+	authMiddleware := &infrastructure.AuthMiddleware{
+		TokenService:   jwtService,
+		UserRepository: userRepo,
+	}
 	infrastructure.StartBlogRefreshWorker(ctx, blogUsecase)
 
 	r := gin.Default()
 
-	routers.RegisterBlogRoutes(r, blogHandler, commentHandler)
+	routers.RegisterBlogRoutes(r, blogHandler, commentHandler, authMiddleware)
 	routers.RegisterUserRoutes(r, userHandler)
 	routers.RegisterTokenRoutes(r, tokenHandler)
 
