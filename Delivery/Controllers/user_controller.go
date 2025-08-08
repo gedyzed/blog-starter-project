@@ -48,7 +48,7 @@ func (uc *UserController) Login(c *gin.Context) {
 	if err != nil {
 		switch err {
 		case usecases.ErrInvalidCredential:
-			c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": "invalid credential"})
 		case domain.ErrUserNotFound:
 			c.IndentedJSON(http.StatusBadRequest, gin.H{
 				"error": "invalid credential",
@@ -118,6 +118,7 @@ func (uc *UserController) RegisterUser(c *gin.Context) {
 
 	_, err := uc.userUsecase.VerifyCode(ctx, user.VCode)
 	if err != nil {
+		log.Println(err.Error())
 		c.IndentedJSON(500, gin.H{"error": err.Error()})
 		c.Abort()
 		return
@@ -131,6 +132,7 @@ func (uc *UserController) RegisterUser(c *gin.Context) {
 		case "email already exists":
 			c.IndentedJSON(409, gin.H{"error": err.Error()})
 		default:
+			log.Println(err.Error())
 			c.IndentedJSON(500, gin.H{"error": err.Error()})
 		}
 
@@ -140,6 +142,7 @@ func (uc *UserController) RegisterUser(c *gin.Context) {
 
 	err = uc.userUsecase.DeleteVCode(ctx, user.Email)
 	if err != nil {
+		log.Println(err.Error())
 		c.IndentedJSON(500, gin.H{"error": err.Error()})
 		c.Abort()
 		return
