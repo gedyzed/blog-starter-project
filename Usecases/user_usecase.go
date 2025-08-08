@@ -19,7 +19,7 @@ var (
 	ErrExpiredRefreshToken = errors.New("refresh token has expired")
 
 	// input errors
-	ErrInvalidCredential = errors.New("invalid email or passwrod")
+	ErrInvalidCredential = errors.New("invalid username or password")
 	ErrUserNotFound      = errors.New("user not found")
 )
 
