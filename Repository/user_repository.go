@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -160,8 +161,10 @@ func (r *mongoUserRepo) Delete(ctx context.Context, id string) error {
 }
 
 func (r *mongoUserRepo) Get(ctx context.Context, id string) (*domain.User, error) {
+
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
+		fmt.Println("err in get: ", err, objID)
 		return nil, domain.ErrInvalidUserID
 	}
 

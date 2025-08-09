@@ -1,25 +1,26 @@
 package infrastructure
 
 import (
-	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
 	domain "github.com/gedyzed/blog-starter-project/Domain"
+	usecases "github.com/gedyzed/blog-starter-project/Usecases"
 	"github.com/gin-gonic/gin"
 )
 
 type AuthMiddleware struct {
 	TokenService domain.ITokenService
 	oauthService domain.IOAuthServices
-	UserRepository domain.IUserRepository 
+	userUsecase  *usecases.UserUsecases
 }
 
-func NewAuthMiddleware(ts domain.ITokenService, os domain.IOAuthServices, userRepo domain.IUserRepository) *AuthMiddleware{
+func NewAuthMiddleware(ts domain.ITokenService, os domain.IOAuthServices, uc *usecases.UserUsecases) *AuthMiddleware{
 	 return &AuthMiddleware{
 		TokenService: ts,
 		oauthService: os,
-		UserRepository: userRepo,
+		userUsecase: uc,
 	}
 }
 
@@ -61,6 +62,8 @@ func (m *AuthMiddleware) IsLogin(c *gin.Context) {
 // Add this function after your existing IsLogin function
 func (m *AuthMiddleware) IsLoginWithRole() gin.HandlerFunc {
 	return func(c *gin.Context) {
+
+		ctx := c.Request.Context()
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
@@ -74,24 +77,38 @@ func (m *AuthMiddleware) IsLoginWithRole() gin.HandlerFunc {
 			return
 		}
 
+		var UserID string
 		token := strings.TrimPrefix(authHeader, "Bearer ")
+
 		userID, err := m.TokenService.VerifyAccessToken(token)
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-			c.Abort()
-			return
+		if err == nil {
+			UserID  = userID
+		} else {
+
+			// Fallback to Google OAuth2 verification
+			resolvedID, err := m.oauthService.VerifyGoogleIDToken(ctx, token)
+			fmt.Println("userID : ", resolvedID)
+			if err != nil {
+				c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": domain.ErrInvalidToken.Error()})
+				c.Abort()
+				return
+		}
+
+		UserID = resolvedID
+
 		}
 
 		// Get user role from database
-		user, err := m.UserRepository.Get(context.Background(), userID)
+		user, err := m.userUsecase.FindByUserID(ctx, UserID)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+			fmt.Println("err : ", err.Error())
+			c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			c.Abort()
-			return
+			return	
 		}
 
 		// Set both userID and role in context
-		c.Set("userID", userID)
+		c.Set("userID", UserID)
 		c.Set("role", user.Role)
 		c.Next()
 	}

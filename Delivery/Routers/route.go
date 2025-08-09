@@ -8,18 +8,15 @@ import (
 )
 
 func RegisterBlogRoutes(r *gin.Engine, blogHandler *controllers.BlogHandler, commentHandler *controllers.CommentHandler, authMiddleware *infrastructure.AuthMiddleware) {
+
 	blog := r.Group("/blogs")
 	{
 		// Public routes
 		blog.GET("/", blogHandler.GetAllBlogs)
 		blog.GET("/:id", blogHandler.GetBlogById)
-		blog.PUT("/:id", blogHandler.UpdateBlog)
-		blog.DELETE("/:id", blogHandler.DeleteBlog)
-		blog.POST("/:id/like", blogHandler.LikeBlog)
-		blog.POST("/:id/dislike", blogHandler.DislikeBlog)
 		blog.GET("/filter", blogHandler.FilterBlogs)
 		blog.GET("/search", blogHandler.SearchBlogs)
-		blog.GET("/:id", blogHandler.GetBlogById)
+		
 
 		// Protected routes
 		blog.POST("/", authMiddleware.IsLogin, blogHandler.CreateBlog)
@@ -28,6 +25,7 @@ func RegisterBlogRoutes(r *gin.Engine, blogHandler *controllers.BlogHandler, com
 		blog.POST("/:id/like", authMiddleware.IsLogin, blogHandler.LikeBlog)
 		blog.POST("/:id/dislike", authMiddleware.IsLogin, blogHandler.DislikeBlog)
 	}
+
 
 	comments := r.Group("/comments")
 	{
@@ -58,7 +56,8 @@ func RegisterUserRoutes(r *gin.Engine, handler *controllers.UserController, auth
 	}
 
 	protectedAdmins := r.Group("/admins")
-	protectedAdmins.Use(authMiddleware.IsLogin)
+	protectedAdmins.Use(authMiddleware.IsLoginWithRole())
+	protectedAdmins.Use(authMiddleware.RequireAdmin())
 	{
 		protectedAdmins.POST("/promote-demote-user", handler.PromoteDemoteUser)
 	}

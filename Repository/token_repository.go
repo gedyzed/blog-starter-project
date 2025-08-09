@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -101,6 +102,7 @@ func (r *mongoTokenRepo) FindByAccessToken (ctx context.Context, accessToken str
 	}
 
 	userID := tokens.UserID
+	fmt.Println("userID in access Token : ", userID)
 	return userID, nil
 }
 

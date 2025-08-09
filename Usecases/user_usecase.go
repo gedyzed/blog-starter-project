@@ -280,6 +280,10 @@ func (u *UserUsecases) GetToken(ctx context.Context, accessToken string)(string,
 	return u.tokenUsecase.GetByAccessToken(ctx, accessToken)
 }
 
+func (u *UserUsecases) FindByUserID(ctx context.Context, userID string)(*domain.User, error){
+	return u.userRepo.Get(ctx, userID)
+}
+
 
 
 

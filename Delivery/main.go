@@ -90,7 +90,7 @@ func main() {
 	genAIHandler := controllers.NewGenerativeAIController(&conf.AI)
 
 	// middlewares 
-	authMiddleware := infrastructure.NewAuthMiddleware(tokenService, oauthService, userRepo)
+	authMiddleware := infrastructure.NewAuthMiddleware(tokenService, oauthService, userUsecase)
 
 	
 	infrastructure.StartBlogRefreshWorker(ctx, blogUsecase)
@@ -102,7 +102,6 @@ func main() {
 	routers.RegisterOAuthRoutes(r,  oAuthHandler)
 	routers.RegisterGenerativeAIRoutes(r, genAIHandler, authMiddleware)
 	routers.RegisterBlogRoutes(r, blogHandler, commentHandler, authMiddleware)
-	routers.RegisterTokenRoutes(r, tokenHandler)
 
 	r.Run(":" + conf.Port)
 }
