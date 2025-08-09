@@ -11,17 +11,19 @@ type User struct {
 	ID        primitive.ObjectID `json:"id" bson:"_id"`
 	Firstname string             `json:"firstname" bson:"firstname"`
 	Lastname  string             `json:"lastname" bson:"lastname"`
-	Username  string             `json:"username" bson:"username"`
+	Username  string             `json:"username,omitempty" bson:"username,omitempty"` // optional for OAuth
 	Email     string             `json:"email" bson:"email"`
-	VCode     string             `json:"vcode" bson:"-"`
+	VCode     string             `json:"vcode,omitempty" bson:"-"` // used only in logic, not saved
 	Role      string             `json:"role" bson:"role"`
-	Password  string             `json:"password" bson:"password"`
+	Password  string             `json:"password,omitempty" bson:"password,omitempty"` // only for local users
+	Provider  string             `json:"provider" bson:"provider"`                     // "local", "google", etc.
 	CreatedAt time.Time          `json:"created_at" bson:"created_at"`
 	UpdatedAt time.Time          `json:"updated_at" bson:"updated_at"`
 
-	// ← embed Profile here
-	Profile Profile `json:"profile" bson:"profile"`
+	// embedded user profile
+	Profile Profile `json:"profile" bson:"profile"` 
 }
+
 
 type ContactInformation struct {
 	PhoneNumber string `json:"phone_number"`
@@ -30,8 +32,8 @@ type ContactInformation struct {
 
 type Profile struct {
 	Bio                string             `json:"bio" bson:"bio"`
-	ContactInformation ContactInformation `json:"contact_information" bson:"contact_information"`
-	ProfilePicture     string             `json:"profile_picture" bson:"profile_picture"`
+	ContactInfo 	   ContactInformation `json:"contact_info" bson:"contact_information"`
+	ProfilePic		   string             `json:"profile_picture" bson:"profile_picture"`
 	CreatedAt          time.Time          `json:"created_at" bson:"created_at"`
 	UpdatedAt          time.Time          `json:"updated_at" bson:"updated_at"`
 }
@@ -68,7 +70,7 @@ type Comment struct {
 
 // Token represents authentication tokens
 type Token struct {
-	UserID        primitive.ObjectID `json:"user_id" bson:"user_id"`
+	UserID        string 			 `json:"user_id" bson:"user_id"`
 	AccessToken   string             `json:"access_token" bson:"access_token"`
 	RefreshToken  string             `json:"refresh_token" bson:"refresh_token"`
 	AccessExpiry  time.Time          `json:"access_expiry" bson:"access_expiry"`
@@ -96,13 +98,8 @@ type Dislike struct {
 }
 
 // AISuggestion represents AI-generated suggestions
-type AISuggestion struct {
-	ID         string    `json:"id" bson:"suggestion_id"`
-	UserID     string    `json:"user_id" bson:"user_id"`
-	BlogID     string    `json:"blog_id" bson:"blog_id"`
-	Prompt     string    `json:"prompt" bson:"prompt"`
-	Suggestion string    `json:"suggestion" bson:"suggestion"`
-	CreatedAt  time.Time `json:"created_at" bson:"created_at"`
+type AIPrompt struct {
+	Prompt     string    `json:"prompt"`
 }
 
 type VToken struct {
@@ -136,8 +133,36 @@ type PromoteDemoteStruct struct {
 }
 
 type ProfileUpdateInput struct {
-	UserID    string  `json:"user_id" binding:"required"`
-	Firstname string  `json:"firstname"`
-	Lastname  string  `json:"lastname"`
-	Profile   Profile `json:"profile" binding:"required"`
+	UserID 	    string 	    `json:"user_id" binding:"required"`
+	Firstname   string       `json:"firstname"`
+    Lastname    string       `json:"lastname"`
+	Bio         string       `json:"bio"`
+	ProfilePic  string       `json:"profile_picture"`
+	Location    string       `json:"location"`
+	PhoneNumber string      `json:"phone_number"`
+
 }
+
+
+// struct for google oauth response
+type UserInfo struct {
+    Sub           string `json:"sub"`
+    Name          string `json:"name"`
+    GivenName     string `json:"given_name"`
+    FamilyName    string `json:"family_name"`
+    Picture       string `json:"picture"`
+    Email         string `json:"email"`
+    EmailVerified bool   `json:"email_verified"`
+    Locale        string `json:"locale"`
+}
+
+// data returned from google's auth verifier
+type OAuthUser struct {
+	ID    string
+	Email string
+	Name  string
+}
+
+
+
+

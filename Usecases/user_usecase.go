@@ -129,30 +129,57 @@ func (u *UserUsecases) RefreshToken(ctx context.Context, id string, refreshToken
 	return u.tokenUsecase.RefreshTokens(ctx, refreshToken)
 }
 
-func (u *UserUsecases) Register(ctx context.Context, user *domain.User) error {
+func (u *UserUsecases) Register(ctx context.Context, user *domain.User) (string, error) {
 
-	// check if username exists
-	existing, err := u.userRepo.GetByUsername(ctx, user.Username)
+	// Ensure Provider is set
+	if user.Provider == "" {
+		user.Provider = "local"
+	}
+
+	// Ensure User Role 
+	if user.Role != "user" {
+		user.Role = "user"
+	}
+
+	// Check email uniqueness
+	existing, err := u.userRepo.GetByEmail(ctx, user.Email)
+	if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
+		return "", domain.ErrInternalServer
+	}
 	if existing != nil {
-		return domain.ErrUsernameAlreadyExists
+		return "", domain.ErrEmailAlreadyExists
 	}
 
-	// check if email exists
-	existing, err = u.userRepo.GetByEmail(ctx, user.Email)
-	if existing != nil {
-		return domain.ErrEmailAlreadyExists
+
+	// Check username uniqueness (if provided)
+	if user.Username != "" {
+		existing, err = u.userRepo.GetByUsername(ctx, user.Username)
+		if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
+			return "", domain.ErrInternalServer
+		}
+		if existing != nil {
+			return "", domain.ErrUsernameAlreadyExists
+		}
 	}
 
-	// hash the user password
-	user.Password, err = u.passwordService.Hash(user.Password)
-	if err != nil {
-		log.Println(err.Error())
-		return domain.ErrInternalServer
+	// Handle password
+	if user.Provider == "local" {
+		user.Password, err = u.passwordService.Hash(user.Password)
+		if err != nil {
+			return "", domain.ErrInternalServer
+		}
+	} else {
+		user.Password = ""
 	}
 
-	// Add user to database
+	// Set timestamps
+	user.CreatedAt = time.Now()
+	user.UpdatedAt = time.Now()
+
+	// Save user to DB
 	return u.userRepo.Add(ctx, user)
 }
+
 
 func (u *UserUsecases) VerifyCode(ctx context.Context, vcode string) (string, error) {
 	return u.tokenUsecase.VerifyCode(ctx, vcode)
@@ -167,7 +194,7 @@ func (u *UserUsecases) ForgotPassword(ctx context.Context, email string) error {
 	// check if a user already exist
 	_, err := u.userRepo.GetByEmail(ctx, email)
 	if err != nil {
-		if errors.Is(domain.ErrInternalServer, err) {
+		if errors.Is(err, domain.ErrInternalServer) {
 			return domain.ErrInternalServer
 		}
 
@@ -216,22 +243,47 @@ func (u *UserUsecases) ProfileUpdate(ctx context.Context, profileUpdate *domain.
 		return err
 	}
 
-	existingProfile := &domain.ProfileUpdateInput{
-		Firstname: existing.Firstname,
-		Lastname:  existing.Lastname,
-		Profile:   existing.Profile,
-	}
-
-	if existingProfile == profileUpdate {
+	if (profileUpdate.Firstname == "" || profileUpdate.Firstname == existing.Firstname) &&
+		(profileUpdate.Lastname == "" || profileUpdate.Lastname == existing.Lastname) &&
+		(profileUpdate.Bio == "" || profileUpdate.Bio == existing.Profile.Bio) &&
+		(profileUpdate.ProfilePic == "" || profileUpdate.ProfilePic == existing.Profile.ProfilePic) &&
+		(profileUpdate.Location == "" || profileUpdate.Location == existing.Profile.ContactInfo.Location) &&
+		(profileUpdate.PhoneNumber == "" || profileUpdate.PhoneNumber == existing.Profile.ContactInfo.PhoneNumber) {
 		return domain.ErrNoUpdate
 	}
 
 	user := &domain.User{
 		Firstname: profileUpdate.Firstname,
-		Lastname:  profileUpdate.Lastname,
-		Profile:   profileUpdate.Profile,
+		Lastname: profileUpdate.Lastname,
+		Profile: domain.Profile{
+			Bio: profileUpdate.Bio,
+			ContactInfo: domain.ContactInformation{
+				Location: profileUpdate.Location,
+				PhoneNumber: profileUpdate.PhoneNumber,
+			},
+			ProfilePic: profileUpdate.ProfilePic,
+		},
 	}
 
 	return u.userRepo.Update(ctx, "_id", profileUpdate.UserID, user)
-
 }
+
+func (u *UserUsecases) SaveToken (ctx context.Context, tokens *domain.Token) error {
+	return u.tokenUsecase.SaveToken(ctx, tokens)
+}
+
+func (u *UserUsecases) GetByEmail(ctx context.Context, email string ) (*domain.User, error){
+	return u.userRepo.GetByEmail(ctx, email)
+}
+
+func (u *UserUsecases) GetToken(ctx context.Context, accessToken string)(string, error){
+	return u.tokenUsecase.GetByAccessToken(ctx, accessToken)
+}
+
+func (u *UserUsecases) FindByUserID(ctx context.Context, userID string)(*domain.User, error){
+	return u.userRepo.Get(ctx, userID)
+}
+
+
+
+

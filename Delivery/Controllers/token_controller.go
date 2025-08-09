@@ -8,8 +8,6 @@ import (
 )
 
 
-
-
 type TokenController struct {
 	tokenUsecase usecases.ITokenUsecase
 }

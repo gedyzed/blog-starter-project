@@ -3,9 +3,11 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
-	"github.com/gedyzed/blog-starter-project/Domain"
+	domain "github.com/gedyzed/blog-starter-project/Domain"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -19,42 +21,45 @@ func NewMongoUserRepo(coll *mongo.Collection) domain.IUserRepository {
 	return &mongoUserRepo{coll: coll}
 }
 
-func (r *mongoUserRepo) Add(ctx context.Context, user *domain.User) error {
-	_, err := r.coll.InsertOne(ctx, user)
+func (r *mongoUserRepo) Add(ctx context.Context, user *domain.User) (string, error) {
+
+	// Set new ObjectID
+	user.ID = primitive.NewObjectID()
+
+	result, err := r.coll.InsertOne(ctx, user)
 	if err != nil {
+		// Handle duplicate key errors
 		if we, ok := err.(mongo.WriteException); ok {
 			for _, e := range we.WriteErrors {
-				if e.Code == 1100 {
-					return domain.ErrUserAlreadyExist
+				if e.Code == 11000 {
+					if e.Message != "" {
+						if strings.Contains(e.Message, "username") {
+							return "", domain.ErrUsernameAlreadyExists
+						} else if strings.Contains(e.Message, "email") {
+							return "", domain.ErrEmailAlreadyExists
+						}
+					}
+					return "", domain.ErrDuplicateKey
 				}
 			}
 		}
 
-		return domain.ErrInternalServer
+		return "", domain.ErrInternalServer
 	}
 
-	return nil
+	// Convert InsertedID to string
+	if oid, ok := result.InsertedID.(primitive.ObjectID); ok {
+		return oid.Hex(), nil
+	}
+
+	return "", domain.ErrInternalServer
 }
 
 func (r *mongoUserRepo) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
-	var user *domain.User
+
+	user := &domain.User{}
 	filter := bson.M{"email": email}
-
-	err := r.coll.FindOne(ctx, filter).Decode(&user)
-	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, domain.ErrUserNotFound
-		}
-		return nil, domain.ErrUserNotFound
-	}
-
-	return user, nil
-}
-
-func (r *mongoUserRepo) GetByUsername(ctx context.Context, username string) (*domain.User, error) {
-	var user *domain.User
-	filter := bson.M{"username": username}
-	err := r.coll.FindOne(ctx, filter).Decode(&user)
+	err := r.coll.FindOne(ctx, filter).Decode(user)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, domain.ErrUserNotFound
@@ -62,6 +67,19 @@ func (r *mongoUserRepo) GetByUsername(ctx context.Context, username string) (*do
 		return nil, domain.ErrInternalServer
 	}
 
+	return user, nil
+}
+func (r *mongoUserRepo) GetByUsername(ctx context.Context, username string) (*domain.User, error) {
+
+	user := &domain.User{}
+	filter := bson.M{"username": username}
+	err := r.coll.FindOne(ctx, filter).Decode(user)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, domain.ErrUserNotFound
+		}
+		return nil, domain.ErrInternalServer
+	}
 	return user, nil
 }
 
@@ -72,7 +90,7 @@ func (r *mongoUserRepo) Update(ctx context.Context, filterField, filterValue str
 	case "_id":
 		objID, err := primitive.ObjectIDFromHex(filterValue)
 		if err != nil {
-			return domain.ErrInvalidUserID
+			return domain.ErrInternalServer
 		}
 		filter = bson.M{"_id": objID}
 	default:
@@ -95,9 +113,18 @@ func (r *mongoUserRepo) Update(ctx context.Context, filterField, filterValue str
 	if user.Password != "" {
 		updateFields["password"] = user.Password
 	}
-	p := domain.Profile{}
-	if p != user.Profile {
-		updateFields["profile"] = user.Profile
+
+	if user.Profile.Bio != "" {
+		updateFields["profile.bio"] = user.Profile.Bio
+	}
+	if user.Profile.ProfilePic != "" {
+		updateFields["profile.profile_picture"] = user.Profile.ProfilePic
+	}
+	if user.Profile.ContactInfo.Location != "" {
+		updateFields["profile.contactInfo.location"] = user.Profile.ContactInfo.Location
+	}
+	if user.Profile.ContactInfo.PhoneNumber != "" {
+		updateFields["profile.contactInfo.phoneNumber"] = user.Profile.ContactInfo.PhoneNumber
 	}
 	updateFields["updated_at"] = time.Now()
 
@@ -134,8 +161,10 @@ func (r *mongoUserRepo) Delete(ctx context.Context, id string) error {
 }
 
 func (r *mongoUserRepo) Get(ctx context.Context, id string) (*domain.User, error) {
+
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
+		fmt.Println("err in get: ", err, objID)
 		return nil, domain.ErrInvalidUserID
 	}
 

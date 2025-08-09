@@ -156,7 +156,7 @@ func (uc *UserController) RegisterUser(c *gin.Context) {
 		return
 	}
 
-	err = uc.userUsecase.Register(ctx, user)
+	_, err = uc.userUsecase.Register(ctx, user)
 	if err != nil {
 		switch err.Error() {
 		case "username already exists":

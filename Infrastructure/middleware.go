@@ -1,64 +1,69 @@
 package infrastructure
 
 import (
-	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
 	domain "github.com/gedyzed/blog-starter-project/Domain"
+	usecases "github.com/gedyzed/blog-starter-project/Usecases"
 	"github.com/gin-gonic/gin"
 )
 
 type AuthMiddleware struct {
-	TokenService   domain.ITokenService
-	UserRepository domain.IUserRepository // Add this field
+	TokenService domain.ITokenService
+	oauthService domain.IOAuthServices
+	userUsecase  *usecases.UserUsecases
 }
 
+func NewAuthMiddleware(ts domain.ITokenService, os domain.IOAuthServices, uc *usecases.UserUsecases) *AuthMiddleware{
+	 return &AuthMiddleware{
+		TokenService: ts,
+		oauthService: os,
+		userUsecase: uc,
+	}
+}
+
+
 func (m *AuthMiddleware) IsLogin(c *gin.Context) {
-	header := c.Request.Header["Authorization"]
-	if len(header) == 0 {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{
-			"error": "missing authorization header",
-		})
+
+	ctx := c.Request.Context()
+	header := c.GetHeader("Authorization")
+	if header == "" || !strings.HasPrefix(header, "Bearer ") {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "missing or invalid authorization header"})
 		c.Abort()
 		return
 	}
 
-	authHeader := header[0]
-	if !strings.HasPrefix(authHeader, "Bearer ") {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{
-			"error": "invalid authorization header format",
-		})
-		c.Abort()
-		return
+	token := strings.TrimPrefix(header, "Bearer ")
+	var userID string
+
+	// First try local JWT verification
+	uid, err := m.TokenService.VerifyAccessToken(token)
+	if err == nil {
+		userID = uid
+	} else {
+		
+		// Fallback to Google OAuth2 verification
+		resolvedID, err := m.oauthService.VerifyGoogleIDToken(ctx, token)
+		if err != nil {
+			c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": domain.ErrInvalidToken.Error()})
+			c.Abort()
+			return
+		}
+
+		userID = resolvedID
 	}
 
-	token := strings.TrimPrefix(authHeader, "Bearer ")
-
-	if token == "" {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{
-			"error": "missing authorization header",
-		})
-		c.Abort()
-		return
-	}
-
-	user, err := m.TokenService.VerifyAccessToken(token)
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{
-			"error": "invalid token",
-		})
-		c.Abort()
-		return
-	}
-
-	c.Set("userID", user)
+	c.Set("userID", userID)
 	c.Next()
 }
 
 // Add this function after your existing IsLogin function
 func (m *AuthMiddleware) IsLoginWithRole() gin.HandlerFunc {
 	return func(c *gin.Context) {
+
+		ctx := c.Request.Context()
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
@@ -72,24 +77,38 @@ func (m *AuthMiddleware) IsLoginWithRole() gin.HandlerFunc {
 			return
 		}
 
+		var UserID string
 		token := strings.TrimPrefix(authHeader, "Bearer ")
+
 		userID, err := m.TokenService.VerifyAccessToken(token)
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-			c.Abort()
-			return
+		if err == nil {
+			UserID  = userID
+		} else {
+
+			// Fallback to Google OAuth2 verification
+			resolvedID, err := m.oauthService.VerifyGoogleIDToken(ctx, token)
+			fmt.Println("userID : ", resolvedID)
+			if err != nil {
+				c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": domain.ErrInvalidToken.Error()})
+				c.Abort()
+				return
+		}
+
+		UserID = resolvedID
+
 		}
 
 		// Get user role from database
-		user, err := m.UserRepository.Get(context.Background(), userID)
+		user, err := m.userUsecase.FindByUserID(ctx, UserID)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+			fmt.Println("err : ", err.Error())
+			c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			c.Abort()
-			return
+			return	
 		}
 
 		// Set both userID and role in context
-		c.Set("userID", userID)
+		c.Set("userID", UserID)
 		c.Set("role", user.Role)
 		c.Next()
 	}

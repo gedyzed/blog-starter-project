@@ -8,18 +8,15 @@ import (
 )
 
 func RegisterBlogRoutes(r *gin.Engine, blogHandler *controllers.BlogHandler, commentHandler *controllers.CommentHandler, authMiddleware *infrastructure.AuthMiddleware) {
+
 	blog := r.Group("/blogs")
 	{
 		// Public routes
 		blog.GET("/", blogHandler.GetAllBlogs)
 		blog.GET("/:id", blogHandler.GetBlogById)
-		blog.PUT("/:id", blogHandler.UpdateBlog)
-		blog.DELETE("/:id", blogHandler.DeleteBlog)
-		blog.POST("/:id/like", blogHandler.LikeBlog)
-		blog.POST("/:id/dislike", blogHandler.DislikeBlog)
 		blog.GET("/filter", blogHandler.FilterBlogs)
 		blog.GET("/search", blogHandler.SearchBlogs)
-		blog.GET("/:id", blogHandler.GetBlogById)
+		
 
 		// Protected routes
 		blog.POST("/", authMiddleware.IsLogin, blogHandler.CreateBlog)
@@ -28,6 +25,7 @@ func RegisterBlogRoutes(r *gin.Engine, blogHandler *controllers.BlogHandler, com
 		blog.POST("/:id/like", authMiddleware.IsLogin, blogHandler.LikeBlog)
 		blog.POST("/:id/dislike", authMiddleware.IsLogin, blogHandler.DislikeBlog)
 	}
+
 
 	comments := r.Group("/comments")
 	{
@@ -39,7 +37,7 @@ func RegisterBlogRoutes(r *gin.Engine, blogHandler *controllers.BlogHandler, com
 	}
 }
 
-func RegisterUserRoutes(r *gin.Engine, handler *controllers.UserController) {
+func RegisterUserRoutes(r *gin.Engine, handler *controllers.UserController, authMiddleware *infrastructure.AuthMiddleware) {
 
 	users := r.Group("/users")
 
@@ -49,13 +47,19 @@ func RegisterUserRoutes(r *gin.Engine, handler *controllers.UserController) {
 		users.DELETE("/logout/:username", handler.Logout)
 		users.POST("/forgot-password", handler.ForgotPassword)
 		users.POST("/reset-password", handler.ResetPassword)
-		users.POST("/update-profile", handler.ProfileUpdate)
 	}
 
-	admins := r.Group("/admins")
-
+	protectedUser := r.Group("/users")
+	protectedUser.Use(authMiddleware.IsLogin)
 	{
-		admins.POST("/promote-demote-user", handler.PromoteDemoteUser)
+		protectedUser.POST("/update-profile", handler.ProfileUpdate)
+	}
+
+	protectedAdmins := r.Group("/admins")
+	protectedAdmins.Use(authMiddleware.IsLoginWithRole())
+	protectedAdmins.Use(authMiddleware.RequireAdmin())
+	{
+		protectedAdmins.POST("/promote-demote-user", handler.PromoteDemoteUser)
 	}
 
 }
@@ -66,5 +70,25 @@ func RegisterTokenRoutes(r *gin.Engine, handler *controllers.TokenController) {
 
 	{
 		tokens.POST("/send-vcode", handler.SendVerificationEmail)
+	}
+}
+
+func RegisterOAuthRoutes(r *gin.Engine, handler *controllers.OAuthController) {
+
+	oauth := r.Group("/oauth")
+
+	{
+		oauth.GET("/auth/login", handler.OAuthHandler)
+		oauth.GET("/callback", handler.OAuthCallBack)
+		oauth.POST("/refresh-token", handler.RefreshToken)
+	}
+}
+
+func RegisterGenerativeAIRoutes(r *gin.Engine, handler *controllers.GenerativeAIController, authMiddleware *infrastructure.AuthMiddleware) {
+
+	protectedAI:= r.Group("/ai")
+	protectedAI.Use(authMiddleware.IsLogin)
+	{
+		protectedAI.POST("/generate", handler.GenerativeAI)
 	}
 }

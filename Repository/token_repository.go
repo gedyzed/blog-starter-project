@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -23,9 +24,14 @@ func NewMongoTokenRepository(coll *mongo.Collection) domain.ITokenRepo {
 	}
 }
 
-func (r *mongoTokenRepo) Save(ctx context.Context, tokens domain.Token) error {
-	filter := bson.M{"user_id": tokens.UserID}
+func (r *mongoTokenRepo) Save(ctx context.Context, tokens *domain.Token) error {
 
+    oid, err := primitive.ObjectIDFromHex(tokens.UserID)
+	if err != nil {
+		return domain.ErrIncorrectUserID
+	}
+
+	filter := bson.M{"user_id": oid}
 	update := bson.M{
 		"$set": bson.M{
 			"access_token":   tokens.AccessToken,
@@ -39,7 +45,7 @@ func (r *mongoTokenRepo) Save(ctx context.Context, tokens domain.Token) error {
 		},
 	}
 
-	_, err := r.coll.UpdateOne(ctx, filter, update, options.Update().SetUpsert(true))
+	_, err = r.coll.UpdateOne(ctx, filter, update, options.Update().SetUpsert(true))
 	if err != nil {
 
 	}
@@ -48,13 +54,14 @@ func (r *mongoTokenRepo) Save(ctx context.Context, tokens domain.Token) error {
 }
 
 func (r *mongoTokenRepo) FindByUserID(ctx context.Context, userID string) (*domain.Token, error) {
-	var tokens domain.Token
 
-	objID, err := primitive.ObjectIDFromHex(userID)
+	oid, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
 		return nil, domain.ErrInvalidUserID
 	}
-	err = r.coll.FindOne(ctx, bson.M{"user_id": objID}).Decode(&tokens)
+
+	var tokens domain.Token
+	err = r.coll.FindOne(ctx, bson.M{"user_id": oid}).Decode(&tokens)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, domain.ErrTokenNotFound
@@ -82,6 +89,23 @@ func (r *mongoTokenRepo) DeleteByUserID(ctx context.Context, userID string) erro
 
 	return nil
 }
+
+func (r *mongoTokenRepo) FindByAccessToken (ctx context.Context, accessToken string) (string, error) {
+
+	var tokens domain.Token
+	err := r.coll.FindOne(ctx, bson.M{"access_token": accessToken}).Decode(&tokens)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return "", domain.ErrTokenNotFound
+		}
+		return "", err
+	}
+
+	userID := tokens.UserID
+	fmt.Println("userID in access Token : ", userID)
+	return userID, nil
+}
+
 
 type mongoVTokenRepo struct {
 	coll *mongo.Collection
@@ -159,3 +183,11 @@ func (r *mongoVTokenRepo) GetVCode(ctx context.Context, token string) (*domain.V
 
 	return existingToken, nil
 }
+
+
+
+
+
+
+
+
