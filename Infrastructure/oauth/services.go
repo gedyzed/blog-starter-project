@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"time"
+	"strings"
 
 	domain "github.com/gedyzed/blog-starter-project/Domain"
 	usecases "github.com/gedyzed/blog-starter-project/Usecases"
@@ -109,6 +110,9 @@ func (os OAuthServices) OAuthCallBack(ctx context.Context, code string) (*domain
 		return nil, err
 	} else {
 
+		parts := strings.Split(userInfo.Email, "@")
+		username := parts[0]
+
 		profile := domain.Profile{
 			ProfilePic: userInfo.Picture,
 			CreatedAt:  now,
@@ -118,6 +122,7 @@ func (os OAuthServices) OAuthCallBack(ctx context.Context, code string) (*domain
 		user := &domain.User{
 			Firstname: userInfo.GivenName,
 			Lastname:  userInfo.FamilyName,
+			Username: username,
 			Email:     userInfo.Email,
 			Role:      "user",
 			Provider:  "google",

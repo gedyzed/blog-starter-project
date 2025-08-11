@@ -93,8 +93,7 @@ func (m *AuthMiddleware) IsLoginWithRole() gin.HandlerFunc {
 				c.Abort()
 				return
 		}
-
-		UserID = resolvedID
+		 UserID = resolvedID
 
 		}
 
