@@ -16,11 +16,11 @@ var (
 	Email_Verification = "email_verification"
 	Password_Reset     = "password_reset"
 
-	ResetPasswordEmailSubject  = "Subject: Sending Password Reset Link"
+	ResetPasswordEmailSubject  = "Sending Password Reset Link"
 	ResetPasswordEmailBodyText = "Here is the link to reset your password click the link "
 	ResetPasswordRoute         = "/users/reset-password?token="
 
-	EmailVerificationSubject = "Subject: Sending Email Verification Code"
+	EmailVerificationSubject = "Sending Email Verification Code"
 	EmailVerificationBody    = "Here is you verification code: "
 )
 
@@ -61,7 +61,7 @@ func NewTokenUsecase(tokenRepo domain.ITokenRepo, vtokenRepo domain.IVTokenRepo,
 	}
 }
 
-func (t *tokenUsecase) CreateSendVCode(ctx context.Context, userID string, tokenType string) error {
+func (t *tokenUsecase) CreateSendVCode(ctx context.Context, email string, tokenType string) error {
 
 	// generate random verfication code
 	token, err := t.GenerateSecureToken(tokenType)
@@ -73,7 +73,7 @@ func (t *tokenUsecase) CreateSendVCode(ctx context.Context, userID string, token
 	expiration_time := time.Now().Add(10 * time.Minute)
 
 	vtoken := domain.VToken{
-		UserID:    userID,
+		Email:     email,
 		TokenType: tokenType,
 		Token:     token,
 		ExpiresAt: expiration_time,
@@ -87,14 +87,14 @@ func (t *tokenUsecase) CreateSendVCode(ctx context.Context, userID string, token
 
 	if vtoken.TokenType == Email_Verification {
 		return t.vtokenServices.SendEmail(
-			[]string{userID},
+			[]string{email},
 			EmailVerificationSubject,
-			EmailVerificationBody+token,
+			EmailVerificationBody + token,
 		)
 	}
 
 	return t.vtokenServices.SendEmail(
-		[]string{userID},
+		[]string{email},
 		ResetPasswordEmailSubject,
 		ResetPasswordRoute+token,
 	)
@@ -126,7 +126,7 @@ func (t *tokenUsecase) VerifyCode(ctx context.Context, token string) (string, er
 		return "", ErrExpiredToken
 	}
 
-	return exsting_token.UserID, nil
+	return exsting_token.Email, nil
 }
 
 func (t *tokenUsecase) DeleteVCode(ctx context.Context, userID string) error {

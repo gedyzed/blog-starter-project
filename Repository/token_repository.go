@@ -119,7 +119,7 @@ func NewMongoVTokenRepository(coll *mongo.Collection) domain.IVTokenRepo {
 
 func (r *mongoVTokenRepo) CreateVCode(ctx context.Context, token *domain.VToken) error {
 
-	filter := bson.M{"user_id": token.UserID}
+	filter := bson.M{"email": token.Email}
 	result := r.coll.FindOne(ctx, filter)
 
 	if result.Err() == nil {

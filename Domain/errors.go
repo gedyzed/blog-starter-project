@@ -34,5 +34,8 @@ var (
 	ErrFailedToExchange    	  = errors.New("failed to exchange authorization code")
 	ErrFailedToFetchUserInfo  = errors.New("failed to fetch user information from Google")
 
+	//Email Errors
+	ErrFailedToSendEmail = errors.New("failed to send email")
+
 	
 )

@@ -103,7 +103,7 @@ type AIPrompt struct {
 }
 
 type VToken struct {
-	UserID    string    `json:"user_id" bson:"user_id"`
+	Email    string    `json:"email" bson:"email"`
 	TokenType string    `json:"token_type" bson:"token_type"`
 	Token     string    `json:"-" bson:"token"`
 	ExpiresAt time.Time `json:"expires_at" bson:"expires_at"`

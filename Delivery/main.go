@@ -20,6 +20,10 @@ func main() {
 
 	conf, err := config.LoadConfig()
 	googleOauthConfig := oauth.NewGoogleOauthConfig(&conf.OAuth)
+	
+	if err != nil {
+		log.Fatal("Cannot configure the amazon ses")
+	}
 
 	if err != nil {
 		fmt.Println(err)
@@ -37,7 +41,6 @@ func main() {
         log.Fatalf("Failed to initialize LRU cache: %v", err)
     }
 	
-
 	// setup collections
 	blogCollection := db.Collection("blogs")
 	commentCollection := db.Collection("comments")
@@ -92,7 +95,6 @@ func main() {
 	// middlewares 
 	authMiddleware := infrastructure.NewAuthMiddleware(tokenService, oauthService, userUsecase)
 
-	
 	infrastructure.StartBlogRefreshWorker(ctx, blogUsecase)
 
 	r := gin.Default()
