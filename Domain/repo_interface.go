@@ -33,12 +33,19 @@ type CommentRepository interface {
 type Cache[T any] interface{
 	Get(key string) (T, bool)
     Set(key string, value T)
+	Delete(key string)
+}
+
+type SortedCache[T any] interface {
+    Cache[T] // Embeds the basic Cache interface
+    SetWithSortKey(sortKey, key string, value T)
+    Invalidate(sortKey string)
 }
 
 type BlogCache interface{
 	BlogCache() Cache[*Blog]
-    CommentCache() Cache[[]*Comment]
-	SortedBlogsCache() Cache[[]Blog]
+    CommentCache() SortedCache[[]*Comment]
+	SortedBlogsCache() SortedCache[[]Blog]
 }
 
 type IUserRepository interface {

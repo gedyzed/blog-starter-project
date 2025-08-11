@@ -18,15 +18,17 @@ type blogRepository struct {
 	collection     *mongo.Collection
 	userRepository domain.IUserRepository
 	blogCache     domain.Cache[*domain.Blog]
-	sortedCache	  domain.Cache[[]domain.Blog]
+	sortedCache	  domain.SortedCache[[]domain.Blog]
+	maxSize 	 int
 }
 
-func NewBlogRepository(coll *mongo.Collection, userRepository domain.IUserRepository, blogCache domain.Cache[*domain.Blog], sorted domain.Cache[[]domain.Blog]) domain.BlogRepository {
+func NewBlogRepository(coll *mongo.Collection, userRepository domain.IUserRepository, blogCache domain.Cache[*domain.Blog], sorted domain.SortedCache[[]domain.Blog], maxx int) domain.BlogRepository {
 	return &blogRepository{
 		collection:     coll,
 		userRepository: userRepository,
 		blogCache: blogCache,
 		sortedCache: sorted,
+		maxSize : maxx,
 	}
 }
 
@@ -42,8 +44,6 @@ func (r *blogRepository) GetAllBlogs(ctx context.Context, page int, limit int, s
 		log.Println("Cache HIT for blogs for:", cacheKey)
 		return cachedBlogs, len(cachedBlogs), nil
 	}
-		 
-	
 
 	var blogs []domain.Blog
 	skip := int64((page - 1) * limit)
@@ -72,7 +72,9 @@ func (r *blogRepository) GetAllBlogs(ctx context.Context, page int, limit int, s
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count blogs: %w", err)
 	}
-	r.sortedCache.Set(cacheKey, blogs)
+	
+	r.sortedCache.SetWithSortKey(sortKey, cacheKey, blogs)
+	
 	return blogs, int(totalCount), nil
 }
 
@@ -103,6 +105,14 @@ func (r *blogRepository) IncrementBlogViews(ctx context.Context, id string) erro
 		return fmt.Errorf("invalid blog id: %w", err)
 	}
 	_, err = r.collection.UpdateOne(ctx, bson.M{"_id": objID}, bson.M{"$inc": bson.M{"view_count": 1}})
+	
+	if cachedBlog, found := r.blogCache.Get(id); found {
+        cachedBlog.ViewCount++
+        r.blogCache.Set(id, cachedBlog)
+    }
+
+	r.sortedCache.Invalidate("popular")
+
 	return err
 }
 
@@ -129,6 +139,11 @@ func (r *blogRepository) CreateBlog(ctx context.Context, blog domain.Blog, userI
 	if err != nil {
 		return nil, fmt.Errorf("failed to insert blog: %w", err)
 	}
+
+	r.blogCache.Set(blog.ID.Hex(), &blog)
+	r.sortedCache.Invalidate("latest")
+	r.sortedCache.Invalidate("popular")
+	
 	return &blog, nil
 }
 
@@ -154,6 +169,12 @@ func (r *blogRepository) UpdateBlog(ctx context.Context, id string, userID strin
 	if res.MatchedCount == 0 {
 		return errors.New("blog not found")
 	}
+	
+	r.blogCache.Delete(id)
+	r.sortedCache.Invalidate("popular")
+	r.sortedCache.Invalidate("latest")
+	r.sortedCache.Invalidate("oldest")
+
 	return nil
 }
 
@@ -170,6 +191,12 @@ func (r *blogRepository) DeleteBlog(ctx context.Context, id string) error {
 	if res.DeletedCount == 0 {
 		return errors.New("no blog found")
 	}
+
+	r.blogCache.Delete(id)
+	r.sortedCache.Invalidate("popular")
+	r.sortedCache.Invalidate("latest")
+	r.sortedCache.Invalidate("oldest")
+
 	return nil
 }
 
@@ -190,8 +217,25 @@ func (r *blogRepository) LikeBlog(ctx context.Context, id string, userID string)
 				"$inc":  bson.M{"like_count": -1},
 			},
 		)
+		if err == nil {
+			if cachedBlog, ok := r.blogCache.Get(id); ok && cachedBlog != nil {
+				if cachedBlog.Likes > 0 {
+					cachedBlog.Likes--
+				}
+				for i, Id := range cachedBlog.LikedUsers {
+					if Id == userID {
+						cachedBlog.LikedUsers = append(cachedBlog.LikedUsers[:i], cachedBlog.LikedUsers[i+1:]...)
+						break
+					}
+				}
+				r.blogCache.Set(id, cachedBlog)
+			}
+		}
+		r.sortedCache.Invalidate("popular")
 		return err
 	}
+
+
 	filter = bson.M{"_id": blogID, "disliked_users": userID}
 	exists = r.collection.FindOne(ctx, filter)
 	if exists.Err() == nil {
@@ -204,9 +248,22 @@ func (r *blogRepository) LikeBlog(ctx context.Context, id string, userID string)
 			},
 		)
 		if err != nil {
+			if cachedBlog, ok := r.blogCache.Get(id); ok && cachedBlog != nil {
+				if cachedBlog.Dislikes > 0{
+					cachedBlog.Dislikes--
+				}
+				
+				for i, uid := range cachedBlog.DislikedUsers{
+					if uid == userID {
+						cachedBlog.DislikedUsers = append(cachedBlog.DislikedUsers[:i], cachedBlog.DislikedUsers[i+1:]...)
+						break
+					}
+				}
+				r.blogCache.Set(id, cachedBlog)
+			}
+			r.sortedCache.Invalidate("popular")
 			return err
 		}
-
 	}
 
 	_, err = r.collection.UpdateOne(
@@ -217,6 +274,15 @@ func (r *blogRepository) LikeBlog(ctx context.Context, id string, userID string)
 			"$inc":      bson.M{"like_count": 1},
 		},
 	)
+	
+
+	if cachedBlog, ok := r.blogCache.Get(id); ok && cachedBlog != nil {
+        cachedBlog.Likes++
+        cachedBlog.LikedUsers = append(cachedBlog.LikedUsers, userID)
+        r.blogCache.Set(id, cachedBlog)
+    }
+
+	r.sortedCache.Invalidate("popular")
 	return err
 }
 
@@ -237,8 +303,25 @@ func (r *blogRepository) DislikeBlog(ctx context.Context, id string, userID stri
 				"$inc":  bson.M{"dislike_count": -1},
 			},
 		)
+		if err == nil {
+			if cachedBlog, ok := r.blogCache.Get(id); ok && cachedBlog != nil {
+				if cachedBlog.Dislikes > 0 {
+					cachedBlog.Dislikes--
+				}
+				for i, Id := range cachedBlog.DislikedUsers{
+					if Id == userID {
+						cachedBlog.DislikedUsers = append(cachedBlog.DislikedUsers[:i], cachedBlog.DislikedUsers[i+1:]...)
+						break
+					}
+				}
+				r.blogCache.Set(id, cachedBlog)
+			}
+		}
+		r.sortedCache.Invalidate("popular")
 		return err
 	}
+
+
 	filter = bson.M{"_id": blogID, "liked_users": userID}
 	exists = r.collection.FindOne(ctx, filter)
 	if exists.Err() == nil {
@@ -251,10 +334,23 @@ func (r *blogRepository) DislikeBlog(ctx context.Context, id string, userID stri
 			},
 		)
 		if err != nil {
-			return err
+			if cachedBlog, ok := r.blogCache.Get(id) ;ok && cachedBlog != nil{
+				if cachedBlog.Likes > 0{
+					cachedBlog.Likes--
+				}
+				for i,id := range(cachedBlog.LikedUsers){
+					if id == userID{
+						cachedBlog.LikedUsers = append(cachedBlog.LikedUsers[:i], cachedBlog.LikedUsers[i+1:]...)
+						break
+					}
+				}
+				r.blogCache.Set(id, cachedBlog)
+			}
 		}
-
+		r.sortedCache.Invalidate("popular")
+		return err
 	}
+	
 
 	_, err = r.collection.UpdateOne(
 		ctx,
@@ -264,6 +360,14 @@ func (r *blogRepository) DislikeBlog(ctx context.Context, id string, userID stri
 			"$inc":      bson.M{"dislike_count": 1},
 		},
 	)
+
+	if cachedBlog, ok := r.blogCache.Get(id) ; ok && cachedBlog != nil{
+		cachedBlog.Dislikes++
+		cachedBlog.DislikedUsers = append(cachedBlog.DislikedUsers, userID)
+		r.blogCache.Set(id, cachedBlog)
+	}
+	r.sortedCache.Invalidate("popular")
+
 	return err
 }
 
@@ -307,6 +411,15 @@ func (r *blogRepository) UpdateStats(ctx context.Context, blogID string, score f
 	if err != nil {
 		return fmt.Errorf("failed to update popularity statistics: %w", err)
 	}
+
+	if cachedBlog, ok := r.blogCache.Get(blogID); ok && cachedBlog != nil {
+		cachedBlog.PopularityScore = score
+		cachedBlog.CommentsCount = commentCount
+		r.blogCache.Set(blogID, cachedBlog)
+	}
+
+	r.sortedCache.Invalidate("popular")
+
 	return nil
 
 }
