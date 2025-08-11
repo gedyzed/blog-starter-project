@@ -117,7 +117,11 @@ func (u *UserUsecases) RefreshToken(ctx context.Context, id string, refreshToken
 		return nil, err
 	}
 
-	if token.RefreshExpiry.Unix() > time.Now().Unix() {
+	if token.RefreshToken != refreshToken {
+		return nil, domain.ErrInvalidToken
+	}
+
+	if time.Now().Unix() > token.RefreshExpiry.Unix() {
 		err = u.tokenUsecase.DeleteByUserID(ctx, id)
 		if err != nil {
 			return nil, err
@@ -136,7 +140,7 @@ func (u *UserUsecases) Register(ctx context.Context, user *domain.User) (string,
 		user.Provider = "local"
 	}
 
-	// Ensure User Role 
+	// Ensure User Role
 	if user.Role != "user" {
 		user.Role = "user"
 	}
@@ -149,7 +153,6 @@ func (u *UserUsecases) Register(ctx context.Context, user *domain.User) (string,
 	if existing != nil {
 		return "", domain.ErrEmailAlreadyExists
 	}
-
 
 	// Check username uniqueness (if provided)
 	if user.Username != "" {
@@ -179,7 +182,6 @@ func (u *UserUsecases) Register(ctx context.Context, user *domain.User) (string,
 	// Save user to DB
 	return u.userRepo.Add(ctx, user)
 }
-
 
 func (u *UserUsecases) VerifyCode(ctx context.Context, vcode string) (string, error) {
 	return u.tokenUsecase.VerifyCode(ctx, vcode)
@@ -254,11 +256,11 @@ func (u *UserUsecases) ProfileUpdate(ctx context.Context, profileUpdate *domain.
 
 	user := &domain.User{
 		Firstname: profileUpdate.Firstname,
-		Lastname: profileUpdate.Lastname,
+		Lastname:  profileUpdate.Lastname,
 		Profile: domain.Profile{
 			Bio: profileUpdate.Bio,
 			ContactInfo: domain.ContactInformation{
-				Location: profileUpdate.Location,
+				Location:    profileUpdate.Location,
 				PhoneNumber: profileUpdate.PhoneNumber,
 			},
 			ProfilePic: profileUpdate.ProfilePic,
@@ -268,22 +270,18 @@ func (u *UserUsecases) ProfileUpdate(ctx context.Context, profileUpdate *domain.
 	return u.userRepo.Update(ctx, "_id", profileUpdate.UserID, user)
 }
 
-func (u *UserUsecases) SaveToken (ctx context.Context, tokens *domain.Token) error {
+func (u *UserUsecases) SaveToken(ctx context.Context, tokens *domain.Token) error {
 	return u.tokenUsecase.SaveToken(ctx, tokens)
 }
 
-func (u *UserUsecases) GetByEmail(ctx context.Context, email string ) (*domain.User, error){
+func (u *UserUsecases) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	return u.userRepo.GetByEmail(ctx, email)
 }
 
-func (u *UserUsecases) GetToken(ctx context.Context, accessToken string)(string, error){
+func (u *UserUsecases) GetToken(ctx context.Context, accessToken string) (string, error) {
 	return u.tokenUsecase.GetByAccessToken(ctx, accessToken)
 }
 
-func (u *UserUsecases) FindByUserID(ctx context.Context, userID string)(*domain.User, error){
+func (u *UserUsecases) FindByUserID(ctx context.Context, userID string) (*domain.User, error) {
 	return u.userRepo.Get(ctx, userID)
 }
-
-
-
-
