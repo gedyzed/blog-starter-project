@@ -11,6 +11,8 @@ import (
 	infrastructure "github.com/gedyzed/blog-starter-project/Infrastructure"
 	config "github.com/gedyzed/blog-starter-project/Infrastructure/config"
 	"github.com/gedyzed/blog-starter-project/Infrastructure/oauth"
+	config "github.com/gedyzed/blog-starter-project/Infrastructure/config"
+	"github.com/gedyzed/blog-starter-project/Infrastructure/oauth"
 	repository "github.com/gedyzed/blog-starter-project/Repository"
 	usecases "github.com/gedyzed/blog-starter-project/Usecases"
 	"github.com/gin-gonic/gin"
@@ -66,6 +68,8 @@ func main() {
 	passService := infrastructure.NewPasswordService()
 	vtokenService := infrastructure.NewTokenService(conf.Email, conf.App.URL)
 	tokenService := infrastructure.NewJWTTokenService(
+	vtokenService := infrastructure.NewTokenService(conf.Email, conf.App.URL)
+	tokenService := infrastructure.NewJWTTokenService(
 		tokenRepo,
 		conf.Auth.AccessTokenKey,
 		conf.Auth.RefreshTokenKey,
@@ -73,13 +77,18 @@ func main() {
 		60*(24*time.Hour), // 2 month
 	)
 	
+	
 
 	// Setup usecases
+	tokenUsecase := usecases.NewTokenUsecase(tokenRepo, vtokenRepo, vtokenService, tokenService)
 	tokenUsecase := usecases.NewTokenUsecase(tokenRepo, vtokenRepo, vtokenService, tokenService)
 	userUsecase := usecases.NewUserUsecase(userRepo, tokenUsecase, passService)
 
 	blogUsecase := usecases.NewBlogUsecase(blogRepo, commentRepo, dispatcher)
 	commentUsecase := usecases.NewCommentUsecase(commentRepo, dispatcher)
+
+	// oauth servcive
+	oauthService := oauth.NewOAuthServices(googleOauthConfig, userUsecase)
 
 	// oauth servcive
 	oauthService := oauth.NewOAuthServices(googleOauthConfig, userUsecase)
@@ -99,6 +108,10 @@ func main() {
 
 	r := gin.Default()
 
+	routers.RegisterUserRoutes(r, userHandler, authMiddleware)
+	routers.RegisterTokenRoutes(r, tokenHandler, )
+	routers.RegisterOAuthRoutes(r,  oAuthHandler)
+	routers.RegisterGenerativeAIRoutes(r, genAIHandler, authMiddleware)
 	routers.RegisterUserRoutes(r, userHandler, authMiddleware)
 	routers.RegisterTokenRoutes(r, tokenHandler, )
 	routers.RegisterOAuthRoutes(r,  oAuthHandler)
