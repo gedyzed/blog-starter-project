@@ -59,7 +59,7 @@ func RegisterUserRoutes(r *gin.Engine, handler *controllers.UserController, auth
 	protectedAdmins.Use(authMiddleware.IsLoginWithRole())
 	protectedAdmins.Use(authMiddleware.RequireAdmin())
 	{
-		protectedAdmins.POST("/promote-demote-user", handler.PromoteDemoteUser)
+		protectedAdmins.POST("/promote-demote", handler.PromoteDemoteUser)
 	}
 
 }
@@ -89,6 +89,6 @@ func RegisterGenerativeAIRoutes(r *gin.Engine, handler *controllers.GenerativeAI
 	protectedAI:= r.Group("/ai")
 	protectedAI.Use(authMiddleware.IsLogin)
 	{
-		protectedAI.POST("/generate", handler.GenerativeAI)
+		protectedAI.GET("/generate", handler.GenerativeAI)
 	}
 }

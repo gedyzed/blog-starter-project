@@ -181,12 +181,12 @@ func (u *UserUsecases) Register(ctx context.Context, user *domain.User) (string,
 }
 
 
-func (u *UserUsecases) VerifyCode(ctx context.Context, vcode string) (string, error) {
-	return u.tokenUsecase.VerifyCode(ctx, vcode)
+func (u *UserUsecases) VerifyCode(ctx context.Context, token *domain.VToken) (string, error) {
+	return u.tokenUsecase.VerifyCode(ctx, token)
 }
 
-func (u *UserUsecases) DeleteVCode(ctx context.Context, userID string) error {
-	return u.tokenUsecase.DeleteVCode(ctx, userID)
+func (u *UserUsecases) DeleteVCode(ctx context.Context, email string) error {
+	return u.tokenUsecase.DeleteVCode(ctx, email)
 }
 
 func (u *UserUsecases) ForgotPassword(ctx context.Context, email string) error {

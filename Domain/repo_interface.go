@@ -63,6 +63,7 @@ type IVTokenRepo interface {
 	CreateVCode(ctx context.Context, token *VToken) error
 	DeleteVCode(ctx context.Context, id string) error
 	GetVCode(ctx context.Context, id string) (*VToken, error)
+	GetByToken(ctx context.Context, id string) (*VToken, error)
 }
 
 type IPasswordService interface {
