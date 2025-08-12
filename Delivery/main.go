@@ -48,7 +48,7 @@ func main() {
 	vtokenRepo := repository.NewMongoVTokenRepository(vtokenCollection)
 	userRepo := repository.NewMongoUserRepo(userCollection)
 
-	blogRepo := repository.NewBlogRepository(blogCollection, userRepo, lruCache.BlogCache(), lruCache. SortedBlogsCache(), cacheSize)
+	blogRepo := repository.NewBlogRepository(blogCollection, userRepo, lruCache.BlogCache(), lruCache. SortedBlogsCache())
 	commentRepo := repository.NewCommentRepository(commentCollection, blogCollection, userRepo,  lruCache.CommentCache())
 
 	//to initialize the indexes

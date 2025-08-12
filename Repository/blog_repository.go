@@ -19,16 +19,14 @@ type blogRepository struct {
 	userRepository domain.IUserRepository
 	blogCache     domain.Cache[*domain.Blog]
 	sortedCache	  domain.SortedCache[[]domain.Blog]
-	maxSize 	 int
 }
 
-func NewBlogRepository(coll *mongo.Collection, userRepository domain.IUserRepository, blogCache domain.Cache[*domain.Blog], sorted domain.SortedCache[[]domain.Blog], maxx int) domain.BlogRepository {
+func NewBlogRepository(coll *mongo.Collection, userRepository domain.IUserRepository, blogCache domain.Cache[*domain.Blog], sorted domain.SortedCache[[]domain.Blog]) domain.BlogRepository {
 	return &blogRepository{
 		collection:     coll,
 		userRepository: userRepository,
 		blogCache: blogCache,
 		sortedCache: sorted,
-		maxSize : maxx,
 	}
 }
 
