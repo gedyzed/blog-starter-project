@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 
 	domain "github.com/gedyzed/blog-starter-project/Domain"
@@ -104,10 +105,17 @@ func (os OAuthServices) OAuthCallBack(ctx context.Context, code string) (*domain
 	var userID string
 
 	if err == nil && existingUser != nil {
+		if existingUser.Provider == "local" {
+			return nil,	domain.ErrLoginWithUsernameAndPassword
+		}
 		userID = existingUser.ID.Hex()
+
 	} else if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
 		return nil, err
 	} else {
+
+		parts := strings.Split(userInfo.Email, "@")
+		username := parts[0]
 
 		profile := domain.Profile{
 			ProfilePic: userInfo.Picture,
@@ -118,6 +126,7 @@ func (os OAuthServices) OAuthCallBack(ctx context.Context, code string) (*domain
 		user := &domain.User{
 			Firstname: userInfo.GivenName,
 			Lastname:  userInfo.FamilyName,
+			Username: username,
 			Email:     userInfo.Email,
 			Role:      "user",
 			Provider:  "google",
@@ -132,6 +141,7 @@ func (os OAuthServices) OAuthCallBack(ctx context.Context, code string) (*domain
 			return nil, err
 		}
 	}
+
 
 	tokens.UserID = userID
 	err = os.userUsecase.SaveToken(ctx, tokens)

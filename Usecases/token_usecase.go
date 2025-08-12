@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"log"
 	"math/big"
 	"time"
 
@@ -16,11 +15,11 @@ var (
 	Email_Verification = "email_verification"
 	Password_Reset     = "password_reset"
 
-	ResetPasswordEmailSubject  = "Subject: Sending Password Reset Link"
+	ResetPasswordEmailSubject  = "Sending Password Reset Link"
 	ResetPasswordEmailBodyText = "Here is the link to reset your password click the link "
 	ResetPasswordRoute         = "/users/reset-password?token="
 
-	EmailVerificationSubject = "Subject: Sending Email Verification Code"
+	EmailVerificationSubject = "Sending Email Verification Code"
 	EmailVerificationBody    = "Here is you verification code: "
 )
 
@@ -32,13 +31,13 @@ var (
 type ITokenUsecase interface {
 	CreateSendVCode(ctx context.Context, userID string, tokenType string) error
 	GenerateSecureToken(string) (string, error)
-	VerifyCode(ctx context.Context, vcode string) (string, error)
+	VerifyCode(ctx context.Context, token *domain.VToken)(string, error)
 	DeleteVCode(ctx context.Context, userID string) error
 	FindByUserID(ctx context.Context, userID string) (*domain.Token, error)
 	RefreshTokens(ctx context.Context, refreshToken string) (*domain.Token, error)
 	GenerateTokens(ctx context.Context, userID string) (*domain.Token, error)
 	VerifyAccessToken(string) (string, error)
-	DeleteByUserID(ctx context.Context, userID string) error	
+	DeleteByUserID(ctx context.Context, email string) error	
 	SaveToken(ctx context.Context, token *domain.Token) error
 	GetByAccessToken(ctx context.Context, accessToken string)(string, error)
 	
@@ -61,7 +60,7 @@ func NewTokenUsecase(tokenRepo domain.ITokenRepo, vtokenRepo domain.IVTokenRepo,
 	}
 }
 
-func (t *tokenUsecase) CreateSendVCode(ctx context.Context, userID string, tokenType string) error {
+func (t *tokenUsecase) CreateSendVCode(ctx context.Context, email string, tokenType string) error {
 
 	// generate random verfication code
 	token, err := t.GenerateSecureToken(tokenType)
@@ -73,7 +72,7 @@ func (t *tokenUsecase) CreateSendVCode(ctx context.Context, userID string, token
 	expiration_time := time.Now().Add(10 * time.Minute)
 
 	vtoken := domain.VToken{
-		UserID:    userID,
+		Email:     email,
 		TokenType: tokenType,
 		Token:     token,
 		ExpiresAt: expiration_time,
@@ -87,14 +86,14 @@ func (t *tokenUsecase) CreateSendVCode(ctx context.Context, userID string, token
 
 	if vtoken.TokenType == Email_Verification {
 		return t.vtokenServices.SendEmail(
-			[]string{userID},
+			[]string{email},
 			EmailVerificationSubject,
-			EmailVerificationBody+token,
+			EmailVerificationBody + token,
 		)
 	}
 
 	return t.vtokenServices.SendEmail(
-		[]string{userID},
+		[]string{email},
 		ResetPasswordEmailSubject,
 		ResetPasswordRoute+token,
 	)
@@ -113,20 +112,39 @@ func (t *tokenUsecase) GenerateSecureToken(tokenType string) (string, error) {
 	return fmt.Sprintf("%06d", n.Int64()), nil
 }
 
-func (t *tokenUsecase) VerifyCode(ctx context.Context, token string) (string, error) {
+func (t *tokenUsecase) VerifyCode(ctx context.Context, token *domain.VToken) (string, error) {
+	var (
+		existingToken *domain.VToken
+		err           error
+	)
 
-	// retreive token details
-	exsting_token, err := t.vtokenRepo.GetVCode(ctx, token)
+	// Retrieve token details
+	if token.TokenType == Email_Verification {
+		existingToken, err = t.vtokenRepo.GetVCode(ctx, token.Email)
+		if err != nil {
+		return "", domain.ErrIncorrectEmail
+	  	}
+
+		if existingToken.Token != token.Token{
+			return "", ErrIncorrectToken
+		}
+	    
+	} else {
+		existingToken, err = t.vtokenRepo.GetByToken(ctx, token.Token)
+		if err != nil {
+	     	return "", ErrIncorrectToken
+	   }
+	}
+	
 	if err != nil {
-		log.Println(err.Error())
 		return "", ErrIncorrectToken
 	}
 
-	if time.Now().After(exsting_token.ExpiresAt) {
+	if time.Now().After(existingToken.ExpiresAt) {
 		return "", ErrExpiredToken
 	}
 
-	return exsting_token.UserID, nil
+	return existingToken.Email, nil
 }
 
 func (t *tokenUsecase) DeleteVCode(ctx context.Context, userID string) error {

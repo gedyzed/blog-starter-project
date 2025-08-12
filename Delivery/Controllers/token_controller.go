@@ -1,9 +1,10 @@
 package controllers
 
 import (
-	
-	usecases "github.com/gedyzed/blog-starter-project/Usecases"
+	"fmt"
+
 	domain "github.com/gedyzed/blog-starter-project/Domain"
+	usecases "github.com/gedyzed/blog-starter-project/Usecases"
 	"github.com/gin-gonic/gin"
 )
 
@@ -33,7 +34,8 @@ func (ec *TokenController) SendVerificationEmail(c *gin.Context) {
 	tokenType := usecases.Email_Verification
 	err := ec.tokenUsecase.CreateSendVCode(ctx, emailRequest.Email, tokenType)
 	if err != nil {
-		c.IndentedJSON(400, gin.H{"error": "Internal server error. Try again later"})
+		fmt.Println("err : ", err)
+		c.IndentedJSON(500, gin.H{"error": "Internal server error. Try again later"})
 		c.Abort()
 		return
 	}

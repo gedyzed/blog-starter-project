@@ -69,7 +69,6 @@ func (u *UserUsecases) Login(ctx context.Context, user domain.User) (*domain.Tok
 		case domain.ErrUserNotFound:
 			return nil, err
 		default:
-			log.Println(err.Error())
 			return nil, domain.ErrInternalServer
 		}
 	}
@@ -183,12 +182,13 @@ func (u *UserUsecases) Register(ctx context.Context, user *domain.User) (string,
 	return u.userRepo.Add(ctx, user)
 }
 
-func (u *UserUsecases) VerifyCode(ctx context.Context, vcode string) (string, error) {
-	return u.tokenUsecase.VerifyCode(ctx, vcode)
+
+func (u *UserUsecases) VerifyCode(ctx context.Context, token *domain.VToken) (string, error) {
+	return u.tokenUsecase.VerifyCode(ctx, token)
 }
 
-func (u *UserUsecases) DeleteVCode(ctx context.Context, userID string) error {
-	return u.tokenUsecase.DeleteVCode(ctx, userID)
+func (u *UserUsecases) DeleteVCode(ctx context.Context, email string) error {
+	return u.tokenUsecase.DeleteVCode(ctx, email)
 }
 
 func (u *UserUsecases) ForgotPassword(ctx context.Context, email string) error {

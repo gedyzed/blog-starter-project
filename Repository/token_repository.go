@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	domain "github.com/gedyzed/blog-starter-project/Domain"
@@ -119,7 +118,7 @@ func NewMongoVTokenRepository(coll *mongo.Collection) domain.IVTokenRepo {
 
 func (r *mongoVTokenRepo) CreateVCode(ctx context.Context, token *domain.VToken) error {
 
-	filter := bson.M{"user_id": token.UserID}
+	filter := bson.M{"email": token.Email}
 	result := r.coll.FindOne(ctx, filter)
 
 	if result.Err() == nil {
@@ -148,13 +147,12 @@ func (r *mongoVTokenRepo) CreateVCode(ctx context.Context, token *domain.VToken)
 	return nil
 }
 
-func (r *mongoVTokenRepo) DeleteVCode(ctx context.Context, id string) error {
+func (r *mongoVTokenRepo) DeleteVCode(ctx context.Context, email string) error {
 
-	filter := bson.M{"user_id": id}
+	filter := bson.M{"email": email}
 	result, err := r.coll.DeleteOne(ctx, filter)
 
 	if err != nil {
-		log.Println(err.Error())
 		return errors.New("internal server error")
 	}
 
@@ -165,9 +163,8 @@ func (r *mongoVTokenRepo) DeleteVCode(ctx context.Context, id string) error {
 	return nil
 }
 
-func (r *mongoVTokenRepo) GetVCode(ctx context.Context, token string) (*domain.VToken, error) {
-
-	filter := bson.M{"token": token}
+func (r *mongoVTokenRepo) getByField(ctx context.Context, field string, value interface{}) (*domain.VToken, error) {
+	filter := bson.M{field: value}
 	result := r.coll.FindOne(ctx, filter)
 	if errors.Is(result.Err(), mongo.ErrNoDocuments) {
 		return nil, domain.ErrTokenNotFound
@@ -175,14 +172,22 @@ func (r *mongoVTokenRepo) GetVCode(ctx context.Context, token string) (*domain.V
 		return nil, domain.ErrInternalServer
 	}
 
-	var existingToken *domain.VToken
-	err := result.Decode(&existingToken)
-	if err != nil {
+	var existingToken domain.VToken
+	if err := result.Decode(&existingToken); err != nil {
 		return nil, domain.ErrInternalServer
 	}
 
-	return existingToken, nil
+	return &existingToken, nil
 }
+
+func (r *mongoVTokenRepo) GetByToken(ctx context.Context, token string) (*domain.VToken, error) {
+	return r.getByField(ctx, "token", token)
+}
+
+func (r *mongoVTokenRepo) GetVCode (ctx context.Context, email string) (*domain.VToken, error) {
+	return r.getByField(ctx, "email", email)
+}
+
 
 
 

@@ -3,6 +3,7 @@ package infrastructure
 import (
 	"context"
 	"time"
+	"fmt"
 
 	"github.com/gedyzed/blog-starter-project/Domain"
 	"github.com/golang-jwt/jwt/v5"
@@ -39,6 +40,7 @@ func (s *JWTTokenService) signJWT(userID string, key []byte, ttl time.Duration) 
 
 func (s *JWTTokenService) verifyJWT(tokenString string, key []byte) (string, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &jwt.RegisteredClaims{}, func(token *jwt.Token) (any, error) {
+		fmt.Println("key : ", key)
 		return key, nil
 	})
 

@@ -11,6 +11,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
+
 type UserController struct {
 	userUsecase *usecases.UserUsecases
 }
@@ -110,6 +112,7 @@ func (uc *UserController) Logout(c *gin.Context) {
 }
 
 func (uc *UserController) Login(c *gin.Context) {
+
 	ctx := c.Request.Context()
 
 	var requestBody struct {
@@ -125,7 +128,7 @@ func (uc *UserController) Login(c *gin.Context) {
 
 	// checking for required fields
 	if requestBody.Username == "" || requestBody.Password == "" {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "fill all required fields: username, password"})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "fill all required fields: username, password or try login with google"})
 		c.Abort()
 		return
 	}
@@ -160,86 +163,69 @@ func (uc *UserController) Login(c *gin.Context) {
 }
 
 func (uc *UserController) RegisterUser(c *gin.Context) {
+    ctx := c.Request.Context()
 
-	ctx := c.Request.Context()
 
-	// accepting user input
-	var user *domain.User
-	if err := c.ShouldBindJSON(&user); err != nil {
-		c.IndentedJSON(400, gin.H{"error": "invalid input format"})
-		c.Abort()
-		return
-	}
+    var user domain.User
+    if err := c.ShouldBindJSON(&user); err != nil {
+        c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid input format"})
+        return
+    }
 
-	// checking for required fields
-	if user.Email == "" || user.Username == "" || user.Password == "" || user.Firstname == "" {
-		c.IndentedJSON(400, gin.H{"error": "fill all required fields: email, username, password, firstname"})
-		c.Abort()
-		return
-	}
+    // Required fields check
+    if user.Email == "" || user.Username == "" || user.Password == "" || user.Firstname == "" {
+        c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "fill all required fields: email, username, password, firstname"})
+        return
+    }
 
-	// Basic validation
-	if len(user.Password) < 6 {
-		c.IndentedJSON(400, gin.H{"error": "password must be at least 6 characters long"})
-		c.Abort()
-		return
-	}
+    // Basic validation
+    if len(user.Password) < 6 {
+        c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "password must be at least 6 characters long"})
+        return
+    }
 
-	if len(user.Username) < 3 {
-		c.IndentedJSON(400, gin.H{"error": "username must be at least 3 characters long"})
-		c.Abort()
-		return
-	}
+    if len(user.Username) < 3 {
+        c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "username must be at least 3 characters long"})
+        return
+    }
 
-	// Basic email validation
-	emailRegex := `^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`
-	re := regexp.MustCompile(emailRegex)
-	match := re.MatchString(user.Email)
-	if !match {
-		c.IndentedJSON(400, gin.H{"error": "invalid email format"})
-		c.Abort()
-		return
-	}
+    if !emailRegex.MatchString(user.Email) {
+        c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid email format"})
+        return
+    }
 
-	if user.VCode == "" {
-		c.IndentedJSON(401, gin.H{"error": "insert verification code from your email"})
-		c.Abort()
-		return
-	}
+    // Verification code required
+    if user.VCode == "" {
+        c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": "insert verification code from your email"})
+        return
+    }
 
-	_, err := uc.userUsecase.VerifyCode(ctx, user.VCode)
-	if err != nil {
-		log.Println(err.Error())
-		c.IndentedJSON(500, gin.H{"error": err.Error()})
-		c.Abort()
-		return
-	}
+    // Verify code & email matchvcode
+	token := domain.VToken{Email: user.Email, TokenType: usecases.Email_Verification, Token: user.VCode}
+    _, err := uc.userUsecase.VerifyCode(ctx, &token)
+    if err != nil  {
+        c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+        return
+    }
 
-	_, err = uc.userUsecase.Register(ctx, user)
-	if err != nil {
-		switch err.Error() {
-		case "username already exists":
-			c.IndentedJSON(409, gin.H{"error": err.Error()})
-		case "email already exists":
-			c.IndentedJSON(409, gin.H{"error": err.Error()})
-		default:
-			log.Println(err.Error())
-			c.IndentedJSON(500, gin.H{"error": err.Error()})
-		}
+    // Register user 
+    if _, err := uc.userUsecase.Register(ctx, &user); err != nil {
+        switch err.Error() {
+        case "username already exists", "email already exists":
+            c.IndentedJSON(http.StatusConflict, gin.H{"error": err.Error()})
+        default:
+            log.Println(err)
+            c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+        }
+        return
+    }
 
-		c.Abort()
-		return
-	}
+    // Delete verification code
+    if err := uc.userUsecase.DeleteVCode(ctx, user.Email); err != nil {
+        log.Println("failed to delete vcode:", err)
+    }
 
-	err = uc.userUsecase.DeleteVCode(ctx, user.Email)
-	if err != nil {
-		log.Println(err.Error())
-		c.IndentedJSON(500, gin.H{"error": err.Error()})
-		c.Abort()
-		return
-	}
-
-	c.IndentedJSON(200, gin.H{"message": "user created successfully"})
+    c.IndentedJSON(http.StatusOK, gin.H{"message": "user created successfully"})
 }
 
 func (uc *UserController) ForgotPassword(c *gin.Context) {
@@ -287,7 +273,8 @@ func (uc *UserController) ResetPassword(c *gin.Context) {
 		return
 	}
 
-	email, err := uc.userUsecase.VerifyCode(ctx, token)
+	token_ := domain.VToken{Token: token, TokenType: usecases.Password_Reset}
+	email, err := uc.userUsecase.VerifyCode(ctx, &token_)
 	if err != nil {
 		c.IndentedJSON(500, gin.H{"error": err.Error()})
 		c.Abort()
@@ -299,6 +286,11 @@ func (uc *UserController) ResetPassword(c *gin.Context) {
 		c.IndentedJSON(500, gin.H{"error": err.Error()})
 		c.Abort()
 		return
+	}
+
+	err = uc.userUsecase.DeleteVCode(ctx, email)
+	if err != nil {
+		log.Println("DeleteVcode in reset password :", err)
 	}
 
 	c.IndentedJSON(200, gin.H{"message": "Password Reset Successful"})

@@ -19,6 +19,7 @@ var (
 	ErrBadRequest            = errors.New("invalid or bad request")
 	ErrDuplicateKey          = errors.New("duplicate key found")
 	ErrInvalidUserID         = errors.New("invalid userID")
+	ErrIncorrectEmail        = errors.New("incorrect email or verification code")
 
 	// Token errors
 	ErrInvalidToken        		= errors.New("invalid access token")
@@ -33,6 +34,10 @@ var (
 	ErrFailedToFetch  	  	  = errors.New("failed to refresh access token")
 	ErrFailedToExchange    	  = errors.New("failed to exchange authorization code")
 	ErrFailedToFetchUserInfo  = errors.New("failed to fetch user information from Google")
+
+	//Email Errors
+	ErrFailedToSendEmail 		= errors.New("failed to send email")
+	ErrLoginWithUsernameAndPassword = errors.New("login with your username and password")
 
 	
 )
