@@ -18,10 +18,10 @@ type commentRepository struct {
 	collection     *mongo.Collection
 	blogCollection *mongo.Collection
 	userRepository domain.IUserRepository
-	commentCache	domain.Cache[[]*domain.Comment]
+	commentCache	domain.SortedCache[[]*domain.Comment]
 }
 
-func NewCommentRepository(commentCollection, blogCollection *mongo.Collection, userRepository domain.IUserRepository,commentCache domain.Cache[[]*domain.Comment]) domain.CommentRepository {
+func NewCommentRepository(commentCollection, blogCollection *mongo.Collection, userRepository domain.IUserRepository,commentCache domain.SortedCache[[]*domain.Comment]) domain.CommentRepository {
 	return &commentRepository{
 		collection:     commentCollection,
 		blogCollection: blogCollection,
@@ -61,11 +61,14 @@ func (r *commentRepository) CreateComment(ctx context.Context, blogID string, us
 		return nil, fmt.Errorf("failed to increment comment count: %w", err)
 	}
 
+	 r.commentCache.Invalidate(blogID)
+
 	return &comment, nil
 }
 
 func (r *commentRepository) GetAllComments(ctx context.Context, blogID string, page int, limit int, sort string) ([]*domain.Comment, int, error) {
-	if comments,found := r.commentCache.Get(blogID); found{
+	cacheKey := fmt.Sprintf("comments:%s:%d:%d:%s", blogID, page, limit, sort)
+	if comments,found := r.commentCache.Get(cacheKey); found{
 		log.Println("cache hit for getting all comments")
 		return comments,len(comments), nil
 	}
@@ -104,7 +107,7 @@ func (r *commentRepository) GetAllComments(ctx context.Context, blogID string, p
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count comments: %w", err)
 	}
-	r.commentCache.Set(blogID,comments)
+	r.commentCache.SetWithSortKey(blogID, cacheKey,comments)
 
 	return comments, int(totalCount), nil
 }
@@ -156,6 +159,8 @@ func (r *commentRepository) EditComment(ctx context.Context, blogID string, id s
 	if res.MatchedCount == 0 {
 		return errors.New("no matching comment found")
 	}
+
+	r.commentCache.Invalidate(blogID)
 	return nil
 }
 
@@ -189,6 +194,9 @@ func (r *commentRepository) DeleteComment(ctx context.Context, blogID, commentID
 		return fmt.Errorf("failed to decrement comment count: %w", err)
 	}
 
+	 r.commentCache.Invalidate(blogID)
+
+
 	return nil
 }
 
@@ -217,6 +225,9 @@ func (r *commentRepository) DeleteCommentByID(ctx context.Context, blogID, comme
 	if err != nil {
 		return fmt.Errorf("failed to decrement comment count: %w", err)
 	}
+
+	
+	r.commentCache.Invalidate(blogID)
 
 	return nil
 }
