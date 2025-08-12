@@ -69,7 +69,7 @@ func (uc *UserController) Login(c *gin.Context) {
 
 	// checking for required fields
 	if requestBody.Username == "" || requestBody.Password == "" {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "fill all required fields: username, password"})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "fill all required fields: username, password or try login with google"})
 		c.Abort()
 		return
 	}

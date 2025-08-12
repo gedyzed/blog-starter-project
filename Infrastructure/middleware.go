@@ -94,17 +94,16 @@ func (m *AuthMiddleware) IsLoginWithRole() gin.HandlerFunc {
 				return
 		}
 		 UserID = resolvedID
-
 		}
 
 		// Get user role from database
 		user, err := m.userUsecase.FindByUserID(ctx, UserID)
 		if err != nil {
-			fmt.Println("err : ", err.Error())
 			c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			c.Abort()
 			return	
 		}
+
 
 		// Set both userID and role in context
 		c.Set("userID", UserID)

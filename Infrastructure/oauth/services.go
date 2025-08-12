@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"time"
 	"strings"
+	"time"
 
 	domain "github.com/gedyzed/blog-starter-project/Domain"
 	usecases "github.com/gedyzed/blog-starter-project/Usecases"
@@ -105,7 +105,11 @@ func (os OAuthServices) OAuthCallBack(ctx context.Context, code string) (*domain
 	var userID string
 
 	if err == nil && existingUser != nil {
+		if existingUser.Provider == "local" {
+			return nil,	domain.ErrLoginWithUsernameAndPassword
+		}
 		userID = existingUser.ID.Hex()
+
 	} else if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
 		return nil, err
 	} else {
@@ -137,6 +141,7 @@ func (os OAuthServices) OAuthCallBack(ctx context.Context, code string) (*domain
 			return nil, err
 		}
 	}
+
 
 	tokens.UserID = userID
 	err = os.userUsecase.SaveToken(ctx, tokens)

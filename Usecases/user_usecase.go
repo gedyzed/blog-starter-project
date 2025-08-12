@@ -69,7 +69,6 @@ func (u *UserUsecases) Login(ctx context.Context, user domain.User) (*domain.Tok
 		case domain.ErrUserNotFound:
 			return nil, err
 		default:
-			log.Println(err.Error())
 			return nil, domain.ErrInternalServer
 		}
 	}

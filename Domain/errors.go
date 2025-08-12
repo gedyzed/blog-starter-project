@@ -36,7 +36,8 @@ var (
 	ErrFailedToFetchUserInfo  = errors.New("failed to fetch user information from Google")
 
 	//Email Errors
-	ErrFailedToSendEmail = errors.New("failed to send email")
+	ErrFailedToSendEmail 		= errors.New("failed to send email")
+	ErrLoginWithUsernameAndPassword = errors.New("login with your username and password")
 
 	
 )
