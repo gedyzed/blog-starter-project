@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"regexp"
@@ -20,6 +21,64 @@ func NewUserController(uc *usecases.UserUsecases) *UserController {
 	return &UserController{userUsecase: uc}
 }
 
+func (uc *UserController) RefreshToken(c *gin.Context) {
+	var requestBody struct {
+		Email        string `json:"email"`
+		RefreshToken string `json:"refresh_token"`
+	}
+
+	if err := c.ShouldBindJSON(&requestBody); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid input format"})
+		c.Abort()
+		return
+	}
+
+	user, err := uc.userUsecase.GetByEmail(c.Request.Context(), requestBody.Email)
+	if err != nil {
+		if errors.Is(err, domain.ErrUserNotFound) {
+			c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			c.Abort()
+			return
+		} else {
+			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+			c.Abort()
+			return
+		}
+	}
+
+	if user.Email != requestBody.Email {
+		c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.Abort()
+		return
+	}
+
+	token, err := uc.userUsecase.RefreshToken(c.Request.Context(), user.ID.Hex(), requestBody.RefreshToken)
+	if err != nil {
+		switch err {
+		case usecases.ErrExpiredRefreshToken:
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "expired refresh token"})
+			c.Abort()
+			return
+		case domain.ErrTokenNotFound:
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "token not found"})
+			c.Abort()
+			return
+		case domain.ErrInvalidToken:
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid token"})
+			c.Abort()
+			return
+		default:
+			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+			c.Abort()
+			return
+		}
+	}
+
+	c.IndentedJSON(http.StatusOK, gin.H{"message": "login successfully",
+		"access_token":  token.AccessToken,
+		"refresh_token": token.RefreshToken,
+	})
+}
 func (uc *UserController) Logout(c *gin.Context) {
 	username := c.Param("username")
 	if username == "" {

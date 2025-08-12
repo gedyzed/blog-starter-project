@@ -19,24 +19,23 @@ import (
 func main() {
 
 	conf, err := config.LoadConfig()
-	googleOauthConfig := oauth.NewGoogleOauthConfig(&conf.OAuth)
-
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
+	googleOauthConfig := oauth.NewGoogleOauthConfig(&conf.OAuth)
 
 	db := infrastructure.DbInit(conf.Mongo.URL)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	
+
 	cacheSize := 100
 	lruCache, err := infrastructure.NewLRUCache(cacheSize)
-	if err != nil{
-        log.Fatalf("Failed to initialize LRU cache: %v", err)
-    }
-	
+	if err != nil {
+		log.Fatalf("Failed to initialize LRU cache: %v", err)
+	}
+
 	// setup collections
 	blogCollection := db.Collection("blogs")
 	commentCollection := db.Collection("comments")
@@ -49,8 +48,8 @@ func main() {
 	vtokenRepo := repository.NewMongoVTokenRepository(vtokenCollection)
 	userRepo := repository.NewMongoUserRepo(userCollection)
 
-	blogRepo := repository.NewBlogRepository(blogCollection, userRepo, lruCache.BlogCache(), lruCache. SortedBlogsCache())
-	commentRepo := repository.NewCommentRepository(commentCollection, blogCollection, userRepo,  lruCache.CommentCache())
+	blogRepo := repository.NewBlogRepository(blogCollection, userRepo, lruCache.BlogCache(), lruCache.SortedBlogsCache())
+	commentRepo := repository.NewCommentRepository(commentCollection, blogCollection, userRepo, lruCache.CommentCache())
 
 	//to initialize the indexes
 	if err := blogRepo.EnsureIndexes(context.Background()); err != nil {
@@ -68,7 +67,6 @@ func main() {
 		30*(24*time.Hour), // 1 month
 		60*(24*time.Hour), // 2 month
 	)
-	
 
 	// Setup usecases
 	tokenUsecase := usecases.NewTokenUsecase(tokenRepo, vtokenRepo, vtokenService, tokenService)
@@ -88,17 +86,16 @@ func main() {
 	oAuthHandler := controllers.NewOAuthController(googleOauthConfig, oauthService)
 	genAIHandler := controllers.NewGenerativeAIController(&conf.AI)
 
-	// middlewares 
+	// middlewares
 	authMiddleware := infrastructure.NewAuthMiddleware(tokenService, oauthService, userUsecase)
 
-	
 	infrastructure.StartBlogRefreshWorker(ctx, blogUsecase)
 
 	r := gin.Default()
 
 	routers.RegisterUserRoutes(r, userHandler, authMiddleware)
-	routers.RegisterTokenRoutes(r, tokenHandler, )
-	routers.RegisterOAuthRoutes(r,  oAuthHandler)
+	routers.RegisterTokenRoutes(r, tokenHandler)
+	routers.RegisterOAuthRoutes(r, oAuthHandler)
 	routers.RegisterGenerativeAIRoutes(r, genAIHandler, authMiddleware)
 	routers.RegisterBlogRoutes(r, blogHandler, commentHandler, authMiddleware)
 

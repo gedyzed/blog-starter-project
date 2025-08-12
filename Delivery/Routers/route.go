@@ -16,7 +16,6 @@ func RegisterBlogRoutes(r *gin.Engine, blogHandler *controllers.BlogHandler, com
 		blog.GET("/:id", blogHandler.GetBlogById)
 		blog.GET("/filter", blogHandler.FilterBlogs)
 		blog.GET("/search", blogHandler.SearchBlogs)
-		
 
 		// Protected routes
 		blog.POST("/", authMiddleware.IsLogin, blogHandler.CreateBlog)
@@ -25,7 +24,6 @@ func RegisterBlogRoutes(r *gin.Engine, blogHandler *controllers.BlogHandler, com
 		blog.POST("/:id/like", authMiddleware.IsLogin, blogHandler.LikeBlog)
 		blog.POST("/:id/dislike", authMiddleware.IsLogin, blogHandler.DislikeBlog)
 	}
-
 
 	comments := r.Group("/comments")
 	{
@@ -47,6 +45,7 @@ func RegisterUserRoutes(r *gin.Engine, handler *controllers.UserController, auth
 		users.DELETE("/logout/:username", handler.Logout)
 		users.POST("/forgot-password", handler.ForgotPassword)
 		users.POST("/reset-password", handler.ResetPassword)
+		users.POST("/token/refresh_token", handler.RefreshToken)
 	}
 
 	protectedUser := r.Group("/users")
@@ -86,7 +85,7 @@ func RegisterOAuthRoutes(r *gin.Engine, handler *controllers.OAuthController) {
 
 func RegisterGenerativeAIRoutes(r *gin.Engine, handler *controllers.GenerativeAIController, authMiddleware *infrastructure.AuthMiddleware) {
 
-	protectedAI:= r.Group("/ai")
+	protectedAI := r.Group("/ai")
 	protectedAI.Use(authMiddleware.IsLogin)
 	{
 		protectedAI.GET("/generate", handler.GenerativeAI)
